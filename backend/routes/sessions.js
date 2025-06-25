@@ -3,7 +3,7 @@ const Session = require("../models/session"); // Import Mongoose schema
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware"); // Authentication Middleware
 const mongoose = require("mongoose");
-const Device = require("../models/Device"); // ⬅️ Add this at the top if not already
+const Device = require("../models/device"); // ⬅️ Add this at the top if not already
 
 
 // ✅ Fetch session by Transaction ID (renamed to avoid route collision)

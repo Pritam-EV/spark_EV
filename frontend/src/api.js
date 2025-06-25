@@ -1,6 +1,6 @@
 import axios from 'axios';
-const BASE_URL = "http://localhost:5000"; // Or your actual backend URL
-const API_URL = 'http://localhost:5000';
+const BASE_URL = "https://spark-ev-backend.onrender.com"; // Or your actual backend URL
+const API_URL = 'https://spark-ev-backend.onrender.com';
 
 export const getDevices = () => axios.get(`${API_URL}/devices`);
 export const saveSession = (sessionData) =>
