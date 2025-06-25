@@ -1,4 +1,3 @@
-const functions = require("firebase-functions");
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -203,4 +202,4 @@ app.get("/api/sessions/active", async (req, res) => {
 // ✅ Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-exports.api = functions.https.onRequest(app);
+// exports.api = functions.https.onRequest(app);
