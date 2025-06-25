@@ -10,19 +10,21 @@ const Session = require("./models/session");
 require("dotenv").config();
 dotenv.config();
 const app = express();
+const CLIENT_URL = [
+  "http://localhost:3000",
+  "https://ornate-profiterole-873549.netlify.app", // your frontend live URL
+];
 
 
 app.use(express.json()); // Ensure this is present!
 app.use(express.urlencoded({ extended: true })); 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "https://ornate-profiterole-873549.netlify.app",
+    origin: CLIENT_URL,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-
 
 // ✅ MongoDB Connection (Using Environment Variables)
 mongoose
@@ -38,6 +40,21 @@ app.use("/api/auth", authRoutes);
 app.use("/api/devices", deviceRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/auth", require("./routes/auth"));
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || CLIENT_URL.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 
 // ✅ Get all devices
 app.get("/api/devices", async (req, res) => {
