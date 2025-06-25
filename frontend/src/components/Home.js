@@ -374,12 +374,11 @@ const styles = {
   buttonContainer: {
     position: "fixed",
     bottom: "0px",
-    left: "0%",
+    left: "50%",
     transform: "translateX(-50%)",
     width: "90%",
     display: "flex",
     justifyContent: "space-between",
-    padding: "10px" ,
     zIndex: 1001,
   },
   button: {
