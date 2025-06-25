@@ -1,0 +1,83 @@
+/* Ensures the entire app is mobile-friendly */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body, html {
+  width: 100%;
+  max-width: 480px;  /* Restrict to standard mobile width */
+  height: 100vh;
+  margin: 0 auto;
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+  font-size: 16px; /* Ensure text scales well */
+  background-color: #f5f5f5; /* Light gray background for better mobile view */
+}
+
+/* Main app container */
+.App {
+  text-align: center;
+  width: 100%;
+  max-width: 480px;
+  height: 100vh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensures all child components follow the same width */
+.container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 10px; /* Some spacing to prevent edge clipping */
+}
+
+/* Fix header for mobile */
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Ensure images and other content are fully responsive */
+img, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Button styling for better mobile experience */
+button {
+  padding: 12px 16px;
+  font-size: 16px;
+  width: 100%;
+  max-width: 400px;
+  margin: 10px auto;
+  display: block;
+  border-radius: 8px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+button:active {
+  background-color: #0056b3;
+}
+
+/* Ensures full responsiveness */
+@media screen and (max-width: 480px) {
+  body {
+    font-size: 14px; /* Slightly smaller text for better readability */
+  }
+}
+

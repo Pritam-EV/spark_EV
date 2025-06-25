@@ -1,0 +1,240 @@
+/* Container with a fixed width for mobile screens */
+:root {
+    --primary-color: #4e0d99;
+    --secondary-color: #e0e0e0;
+    --background-color: #f5f5f5;
+    --font-color: #333;
+    --button-hover-color: #45a049;
+    --font-family: Arial, sans-serif;
+    --heading-font-size: 18px;
+    --button-font-size: 16px;
+    --slider-thumb-color: #4caf50;
+    --slider-track-color: #ddd;
+  }
+.session-container {
+    max-width: 380px; /* Restricts width to fit mobile screens */
+    width: 95%;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    text-align: center;
+      font-family: 'Segoe UI', sans-serif;
+  }
+  
+  /* Top Card with gradient background */
+  .top-card {
+    width: 80%;
+    background: linear-gradient(135deg, #1e2c3a, #243745);
+    color: white;
+    padding: 9px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 14px;
+    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.2);
+  }
+  /* Status text */
+  .status.charging {
+    color: lime;
+    font-weight: bold;
+  }
+  
+  .status.stopped {
+    color: red;
+    font-weight: bold;
+  }
+  
+  /* Charging Progress Card */
+  .charging-progress-card {
+    width: 90%;
+    background: white;
+    border-radius: 15px;
+    padding: 12px;
+    text-align: center;
+  /*  box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.1); */
+  }
+  
+  /* Large text for important numbers */
+  .large-text {
+    font-size: 22px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  /* Small text for labels */
+  .small-text {
+    font-size: 12px;
+    color: gray;
+  }
+  
+  /* Progress Bar */
+  .progress-bar {
+    width: 100%;
+    height: 15px;
+    background: #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: green;
+    transition: width 0.5s ease-in-out;
+  }
+  
+/* Circular Progress Chart */
+.circular-progress-container {
+  position: relative;
+  width: 180px;
+  height: 180px;
+}
+
+.circular-progress {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+
+.circular-bg,
+.circular-fg {
+  fill: none;
+  stroke-width: 15;
+  stroke-linecap: round;
+}
+
+.circular-bg {
+  stroke: #2f616b;
+}
+
+.circular-fg {
+  stroke: #F2CB05;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  color: #F2CB05;
+  font-size: 18px;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-weight: bold;
+}
+
+  /* Live Data (Voltage & Current) */
+  .live-data {
+  width: 100%;
+  background: #01313A;
+  color: #04BFBF;
+  padding: 12px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-around;
+  }
+  
+  /* Live values in larger text */
+
+.live-value .large-text {
+  font-size: 18px;
+  font-weight: bold;
+  color: #F2CB05;
+}
+
+.live-value .small-text {
+  font-size: 11px;
+  color: #ccc;
+}
+  
+  .stop-button {
+    background-color: #ff5733;
+    color: white;
+    font-size: 16px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .stop-button:hover {
+    background-color: #c0392b;
+  }
+  
+  .stop-button:active {
+    background-color: #e74c3c;
+  }
+  
+  .summary-card {
+    border: 1px solid #ccc;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 400px;
+    border-radius: 8px;
+    background: #f9f9f9;
+    text-align: left;
+  }
+  
+  .summary-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .summary-buttons button {
+    padding: 10px 20px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+.slide-container {
+  margin: 100px auto;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  height: 20px;
+}
+
+.slider-track {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  background: #fd1100;
+  border-radius: 30px;
+  box-shadow: inset 0 0 6px #000000;
+  touch-action: none;
+}
+
+.slider-thumb {
+  position: absolute;
+  margin: 0px;
+  top: 0px;
+  width: 50px;
+  height: 50px;
+  background-color: #ffffff;
+  border-radius: 100px;
+  box-shadow: inset 0 0 6px #000000;
+  text-align: center;
+  line-height: 25px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+  z-index: 2;
+}
+
+.slider-label {
+  position: relative;
+  width: 100%;
+  text-align: center;
+  top: 10px;
+  color: #ffffff;
+  font-size: 14px;
+} 
