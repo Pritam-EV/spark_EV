@@ -373,7 +373,7 @@ const styles = {
   },
   buttonContainer: {
     position: "fixed",
-    bottom: "0px",
+    bottom: "15px",
     left: "50%",
     transform: "translateX(-50%)",
     width: "90%",
