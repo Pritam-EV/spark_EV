@@ -51,7 +51,7 @@ const SessionPage = () => {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const res = await axios.get("http://localhost:5000/api/sessions/user-sessions", {
+      const res = await axios.get("https://spark-ev-backend.onrender.com/api/sessions/user-sessions", {
         headers: { Authorization: `Bearer ${token}` },
       });
 

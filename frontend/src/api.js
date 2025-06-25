@@ -9,7 +9,7 @@ export const saveSession = (sessionData) =>
   export const endSession = (sessionData) =>
     axios.post(`${BASE_URL}/sessions/end`, sessionData);
   export const startSession = async (transactionId, deviceId) => {
-    return fetch("http://localhost:5000/api/sessions/start", {
+    return fetch("https://spark-ev-backend.onrender.com/api/sessions/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transactionId, deviceId }),

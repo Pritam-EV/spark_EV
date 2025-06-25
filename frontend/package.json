@@ -2,7 +2,7 @@
   "homepage": ".",
   "name": "frontend",
   "version": "0.1.0",
-  "proxy": "http://localhost:5000",  
+  "proxy": "https://spark-ev-backend.onrender.com",  
   "private": true,
   "dependencies": {
     "@blackbox-vision/react-qr-reader": "^5.0.0",

@@ -33,7 +33,7 @@ const Login = () => {
         return;
       }
 
-      const res = await axios.post("http://localhost:5000/api/auth/google", {
+      const res = await axios.post("https://spark-ev-backend.onrender.com/api/auth/google", {
         token: response.credential,
       });
 
@@ -94,7 +94,7 @@ localStorage.setItem("user", JSON.stringify(res.data.user));
     }
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/signup", {
+      const res = await axios.post("https://spark-ev-backend.onrender.com/api/auth/signup", {
         name,
         mobile,
         vehicleType,

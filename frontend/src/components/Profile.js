@@ -29,7 +29,7 @@ const Profile = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/auth/delete", {
+      const response = await fetch("https://spark-ev-backend.onrender.com/api/auth/delete", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -53,7 +53,7 @@ const Profile = () => {
     e.preventDefault();
     const token = localStorage.getItem("token");
 
-    const response = await fetch("http://localhost:5000/api/auth/updateProfile", {
+    const response = await fetch("https://spark-ev-backend.onrender.com/api/auth/updateProfile", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

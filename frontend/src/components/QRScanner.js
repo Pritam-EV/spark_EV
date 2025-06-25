@@ -8,7 +8,7 @@ const QRScanner = () => {
   const [device_id, setDeviceId] = useState("");
   const [error, setError] = useState("");
 
-  const API_URL = "http://localhost:5000/api/devices/check-device";
+  const API_URL = "https://spark-ev-backend.onrender.com/api/devices/check-device";
 
   const handleScan = async (data) => {
     if (data?.text) {

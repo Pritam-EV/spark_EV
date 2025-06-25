@@ -12,7 +12,7 @@ const Home = () => {
   const [ui, setUi] = useState(null);
 
   const HERE_API_KEY = "UV-_hV7ccZE4V0eSC-lva1uToSfKYksP-yCATEO-XN0";
-  const API_URL = "http://localhost:5000/api/devices";
+  const API_URL = "https://spark-ev-backend.onrender.com/api/devices";
   const [scriptsLoaded, setScriptsLoaded] = useState(false);
 
   useEffect(() => {

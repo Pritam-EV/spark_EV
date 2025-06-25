@@ -221,7 +221,7 @@ return () => {
       });
 
       const response = await axios.post(
-        "http://localhost:5000/api/sessions/start",
+        "https://spark-ev-backend.onrender.com/api/sessions/start",
         {
           sessionId,
           deviceId,
@@ -345,7 +345,7 @@ useEffect(() => {
         totalAmount,
       });
 
-      axios.post("http://localhost:5000/api/sessions/update", {
+      axios.post("https://spark-ev-backend.onrender.com/api/sessions/update", {
         sessionId: prev.sessionId,
         energyConsumed: totalEnergy,
         amountUsed: totalAmount,
@@ -444,7 +444,7 @@ useEffect(() => {
       console.log("📤 Sending stop session request:", sessionPayload);
 
       const response = await axios.post(
-        "http://localhost:5000/api/sessions/stop",
+        "https://spark-ev-backend.onrender.com/api/sessions/stop",
         sessionPayload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
