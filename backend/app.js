@@ -16,7 +16,7 @@ app.use(express.json()); // Ensure this is present!
 app.use(express.urlencoded({ extended: true })); 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: process.env.CLIENT_URL || "https://ornate-profiterole-873549.netlify.app",
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
