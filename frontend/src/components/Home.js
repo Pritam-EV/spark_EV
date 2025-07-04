@@ -216,21 +216,25 @@ if (activeMarker && activeMarker !== marker) {
 
 // Create enlarged SVG with bigger glow
 const enlargedSvgMarkup = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24">
+  <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
     <defs>
       <filter id="strong-glow" height="400%" width="400%" x="-150%" y="-150%">
-        <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="${glowColor}" flood-opacity="1"/>
+        <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="${glowColor}" flood-opacity="1"/>
       </filter>
     </defs>
-    <path d="M12 2C8 2 5 5.1 5 9c0 4.4 7 13 7 13s7-8.6 7-13c0-3.9-3-7-7-7z"
-          fill="#121B22" filter="url(#strong-glow)"/>
-    <path d="M13 7h-2l-1 4h2l-1 4 4-5h-2l1-3z"
-          fill="${glowColor}"/>
+    <!-- Translate so the pin sits centered in the larger canvas -->
+    <g transform="translate(24, 16) scale(2)">
+      <path d="M12 2C8 2 5 5.1 5 9c0 4.4 7 13 7 13s7-8.6 7-13c0-3.9-3-7-7-7z"
+            fill="#121B22" filter="url(#strong-glow)"/>
+      <path d="M13 7h-2l-1 4h2l-1 4 4-5h-2l1-3z"
+            fill="${glowColor}"/>
+    </g>
   </svg>
 `;
+
 const enlargedIcon = new window.H.map.Icon(
   "data:image/svg+xml;base64," + btoa(enlargedSvgMarkup),
-  { size: { w: 48, h: 48 }, anchor: { x: 24, y: 48 } }
+  { size: { w: 96, h: 96 }, anchor: { x: 48, y: 70 } }
 );
 marker.setIcon(enlargedIcon);
 
@@ -340,14 +344,58 @@ marker.originalIcon = icon; // save original icon immediately
   </div>
   <div className="home-container">
     <div ref={mapRef} className="map-container"></div>
-    <div className="bottom-bar">
-      <button onClick={() => navigate("/sessions")} className="home-button">Sessions</button>
-      <button onClick={() => navigate("/home")} className="scan-button">Home</button>
-      <button onClick={() => navigate("/profile")} className="home-button">Profile</button>
+
+<div className="bottom-bar">
+  <button onClick={() => navigate("/sessions")} className="home-button">
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="30" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+        <path d="M13 2L3 14h9v8l9-12h-9z"/> {/* Thunderbolt */}
+      </svg>
+      <span style={{ fontFamily: "'Rubik', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Sessions</span>
     </div>
-    <button onClick={() => navigate("/qr-scanner")} className="qr-floating-button">
-      <img src="/logo192.png" alt="QR Code" className="qr-icon" />
-    </button>
+  </button>
+
+  <button onClick={() => navigate("/home")} className="scan-button">
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/> {/* Home */}
+      </svg>
+      <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Home</span>
+    </div>
+  </button>
+
+  <button onClick={() => navigate("/profile")} className="home-button">
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8V22h19.2v-2.8c0-3.2-6.4-4.8-9.6-4.8z"/> {/* Profile */}
+      </svg>
+      <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Profile</span>
+    </div>
+  </button>
+</div>
+
+
+<button onClick={() => navigate("/qr-scanner")} className="qr-floating-button" style={{
+  position: "absolute",
+  top: "80px",
+  right: "20px",
+  width: "50px",
+  height: "50px",
+  borderRadius: "50%",
+  backgroundColor: "#04BFBF",
+  border: "none",
+  boxShadow: "0 0 12px #04BFBF",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  zIndex: 1002,
+}}>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30" fill="#0f1a1d">
+    <path d="M3 3v8h8V3H3zm6 6H5V5h4v4zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM3 13v8h8v-8H3zm6 6H5v-4h4v4zM13 13h2v2h-2zm4 0h2v2h-2zm-4 4h2v2h-2zm4 0h2v6h-6v-2h4v-4z"/>
+  </svg>
+</button>
+
   </div>
 </>
 
