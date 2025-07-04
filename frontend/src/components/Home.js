@@ -224,7 +224,7 @@ function smoothShrinkMarker(marker) {
   let scale = 1.2;
   const minScale = 1;
   const step = 0.5;
-  const glowColor = marker.getData()?.status === "Available" ? "#026873" : "#F2A007";
+  const glowColor = marker.getData()?.status === "Available" ? "#04BFBF" : "#F2A007";
 
   const interval = setInterval(() => {
     if (scale <= minScale) {
@@ -353,7 +353,7 @@ document.getElementById("close-popup")?.addEventListener("click", closePopup);
 
         const location = new window.H.geo.Point(device.lat, device.lng);
 
-const glowColor = device.status === "Available" ? "#026873" : "#F2A007";
+const glowColor = device.status === "Available" ? "#04BFBF" : "#F2A007";
 
 const svgMarkup = `
   <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
@@ -418,10 +418,10 @@ marker.originalIcon = icon; // save original icon immediately
 
   <button onClick={() => navigate("/home")} className="scan-button">
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#04BFBF" strokeWidth="1" viewBox="0 0 24 24">
         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/> {/* Home */}
       </svg>
-      <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Home</span>
+      <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#04BFBF" }}>Home</span>
     </div>
   </button>
 
