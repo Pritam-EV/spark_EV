@@ -293,7 +293,7 @@ if (connectBtn && device.status === "Available") {
   </div>
   <div className="home-container">
     <div ref={mapRef} className="map-container"></div>
-    <div className="button-container">
+    <div className="bottom-bar">
       <button onClick={() => navigate("/sessions")} className="home-button">Sessions</button>
       <button onClick={() => navigate("/home")} className="scan-button">Home</button>
       <button onClick={() => navigate("/profile")} className="home-button">Profile</button>
