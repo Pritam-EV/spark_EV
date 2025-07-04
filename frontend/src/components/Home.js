@@ -76,142 +76,178 @@ const Home = () => {
     setUi(uiInstance);
     setMap(mapInstance);
   };
+    const getDirections = (lat, lng) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${lat},${lng}&travelmode=driving`;
+        window.open(gmapsUrl, "_blank");
+      },
+      () => {
+        const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+        window.open(gmapsUrl, "_blank");
+      }
+    );
+  };
+
+   const showDevicePopup = (device, marker) => {
+    if (!map || !ui) return;
+
+    document.getElementById("custom-popup")?.remove();
+
+    const popupDiv = document.createElement("div");
+    popupDiv.id = "custom-popup";
+    popupDiv.innerHTML = `
+      <div id="popup-content" style="
+        position: fixed;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        max-width: 400px;
+        background: #FFFFFF;
+        border-radius: 12px;
+        box-shadow: 0 0 18px rgba(0,0,0,0.2);
+        padding: 16px;
+        font-family: 'Open Sans', sans-serif;
+        color: #011F26;
+        z-index: 1000;
+      ">
+        <button id="close-popup" style="
+          position: absolute;
+          top: 8px;
+          right: 10px;
+          background: transparent;
+          border: none;
+          font-size: 15px;
+          color: #011F26;
+          cursor: pointer;
+        ">✖</button>
+
+        <div style="display: flex; align-items: center;">
+          <img src="/device-image.png" alt="Charger" style="
+            width: 80px;
+            height: 90px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-right: 8px;
+          " />
+
+          <div style="flex: 1;">
+            <div style="margin-bottom: 4px; font-size: 15px;">
+              <strong> </strong> ${device.location}
+            </div>
+            <div style="margin-bottom: 4px; font-size: 15px;">
+              <strong></strong> ${device.charger_type}
+            </div>
+            <div style="margin-bottom: 12px; display: flex; align-items: center;">
+              <strong></strong> 
+              <span style="
+                display: inline-block;
+                font-size: 15px;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background-color: ${device.status === "Available" ? "#20b000" : "#e00f00"};
+                margin-left: 6px;
+                margin-right: 6px;
+              "></span>
+              ${device.status}
+            </div>
+<div style="display: flex; gap: 8px;">
+  <button id="connect-device" style="
+    flex: 2;  /* Make this button wider */
+    padding: 8px;
+    background: #04BFBF;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  ">
+    Connect with Charger
+  </button>
+  <button id="get-directions" style="
+    flex: 0.6;  /* Make this button narrower */
+    padding: 8px;
+    background: #F2A007;
+    color: #011F26;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  ">
+    <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" fill="#011F26">
+      <path d="M12 2L3 21l9-4 9 4-9-19z"/>
+    </svg>
+  </button>
+</div>
+
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(popupDiv);
+
+    setTimeout(() => {
+      const closePopup = () => document.getElementById("custom-popup")?.remove();
+      document.getElementById("close-popup")?.addEventListener("click", closePopup);
+
+      const connectBtn = document.getElementById("connect-device");
+      if (connectBtn && device.status === "Available") {
+        connectBtn.addEventListener("click", () => {
+          closePopup();
+          window.location.href = "/qr-scanner";
+        });
+      }
+
+      document.getElementById("get-directions")?.addEventListener("click", () => {
+        closePopup();
+        getDirections(device.lat, device.lng);
+      });
+
+      document.addEventListener(
+        "click",
+        (event) => {
+          const popup = document.getElementById("custom-popup");
+          if (popup && !popup.contains(event.target)) {
+            popup.remove();
+          }
+        },
+        { once: true }
+      );
+    }, 100);
+  };
 
   useEffect(() => {
     if (map && devices.length > 0) {
-      const showDevicePopup = (device, marker) => {
-        if (!map || !ui) return;
-
-        document.getElementById("custom-popup")?.remove();
-
-        const popupDiv = document.createElement("div");
-        popupDiv.id = "custom-popup";
-        popupDiv.innerHTML = `
-        <div id="popup-content" style="
-          width: 260px;
-          padding: 16px;
-          font-size: 14px;
-          text-align: center;
-          background: #0f1a1d;
-          border-radius: 12px;
-          box-shadow: 0 0 18px #86c6d7;
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          z-index: 1000;
-          color: #cdebf5;
-          font-family: 'Segoe UI', sans-serif;
-        ">
-          <strong style="font-size: 16px; color: #ff9100;">${device.location}</strong><br/><br/>
-          Status: <span style="color: ${device.status === "Available" ? "#20b000" : "#e00f00"};">
-            ${device.status}
-          </span><br/>
-          Charger Type: <span style="color: #cdebf5;">${device.charger_type}</span><br/><br/>
-
-          <button id="get-directions" style="
-            padding: 8px 14px;
-            margin: 6px 0;
-            background: #86c6d7;
-            color: #0f1a1d;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            box-shadow: 0 0 8px #86c6d7;
-          ">
-            Get Directions
-          </button><br/>
-
-          <button id="connect-device" style="
-            padding: 8px 14px;
-            margin: 6px 0;
-            background: #ff9100;
-            color: #0f1a1d;
-            font-weight: bold;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            box-shadow: 0 0 8px #ff9100;
-          ">
-            Connect to Device
-          </button>
-
-          <button id="close-popup" style="
-            position: absolute;
-            top: 8px;
-            right: 10px;
-            background: transparent;
-            border: none;
-            font-size: 18px;
-            color: #cdebf5;
-            cursor: pointer;
-          ">✖</button>
-          
-        </div>
-      `;
-
-        document.body.appendChild(popupDiv);
-
-        setTimeout(() => {
-          const closePopup = () => document.getElementById("custom-popup")?.remove();
-
-          document.getElementById("close-popup")?.addEventListener("click", closePopup);
-
-
-const connectBtn = document.getElementById("connect-device");
-if (connectBtn && device.status === "Available") {
-  connectBtn.addEventListener("click", () => {
-    closePopup();
-    window.location.href = "/qr-scanner";
-  });
-}
-
-
-          
-          document.getElementById("get-directions")?.addEventListener("click", () => {
-            closePopup();
-            getDirections(device.lat, device.lng);
-          });
-
-          document.addEventListener(
-            "click",
-            (event) => {
-              const popup = document.getElementById("custom-popup");
-              if (popup && !popup.contains(event.target)) {
-                popup.remove();
-              }
-            },
-            { once: true }
-          );
-        }, 100);
-
-        setTimeout(() => {
-          const lookAtData = map.getViewModel().getLookAtData();
-          const bubblePos = marker.getGeometry();
-          if (bubblePos.lat > lookAtData.position.lat + 0.01) {
-            map.setCenter({ lat: bubblePos.lat - 0.005, lng: bubblePos.lng }, true);
-          }
-        }, 200);
-      };
-
       devices.forEach((device) => {
         if (typeof device.lat !== "number" || typeof device.lng !== "number") return;
 
         const location = new window.H.geo.Point(device.lat, device.lng);
 
         const svgMarkup = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
-          <defs>
-            <filter id="glow" height="300%" width="300%" x="-75%" y="-75%">
-              <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#86c6d7"/>
-              <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#ff9100"/>
-            </filter>
-          </defs>
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"
-                fill="#0f1a1d" stroke="#ff9100" stroke-width="1.5" filter="url(#glow)" />
-        </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
+            <defs>
+              <filter id="glow" height="300%" width="300%" x="-75%" y="-75%">
+                <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#86c6d7"/>
+                <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#ff9100"/>
+              </filter>
+            </defs>
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"
+                  fill="#0f1a1d" stroke="#ff9100" stroke-width="1.5" filter="url(#glow)" />
+          </svg>
         `;
-
         const encoded = "data:image/svg+xml;base64," + btoa(svgMarkup);
 
         const icon = new window.H.map.Icon(encoded, {
@@ -232,59 +268,6 @@ if (connectBtn && device.status === "Available") {
     }
   }, [map, devices, ui]);
 
-  const getDirections = (lat, lng) => {
-    if (!map || !platform) return;
-
-    navigator.geolocation.getCurrentPosition((position) => {
-      const userLat = position.coords.latitude;
-      const userLng = position.coords.longitude;
-
-      const routeUrl = `https://router.hereapi.com/v8/routes?transportMode=car&origin=${userLat},${userLng}&destination=${lat},${lng}&return=polyline,summary&apiKey=${HERE_API_KEY}`;
-
-      fetch(routeUrl)
-        .then((response) => {
-          if (!response.ok) throw new Error("Failed to fetch route");
-          return response.json();
-        })
-        .then((data) => {
-          if (!data.routes || data.routes.length === 0) {
-            alert("No route found!");
-            return;
-          }
-
-          const route = data.routes[0];
-          map.getObjects().forEach((obj) => {
-            if (obj instanceof window.H.map.Polyline) {
-              map.removeObject(obj);
-            }
-          });
-
-          const lineString = new window.H.geo.LineString();
-
-          route.sections.forEach((section) => {
-            const decodedPolyline = window.H.geo.LineString.fromFlexiblePolyline(section.polyline);
-            for (let i = 0; i < decodedPolyline.getPointCount(); i++) {
-              const point = decodedPolyline.extractPoint(i);
-              lineString.pushPoint(point);
-            }
-          });
-
-          const routePolyline = new window.H.map.Polyline(lineString, {
-            style: { strokeColor: "#86c6d7", lineWidth: 4 },
-          });
-
-          map.addObject(routePolyline);
-          map.getViewModel().setLookAtData({ bounds: routePolyline.getBoundingBox() });
-
-          setTimeout(() => {
-            if (window.confirm("Open Google Maps for navigation?")) {
-              window.open(`https://www.google.com/maps/dir/${userLat},${userLng}/${lat},${lng}/`, "_blank");
-            }
-          }, 500);
-        })
-        .catch((error) => console.error("Error fetching route:", error));
-    });
-  };
 
   return (
 <>
