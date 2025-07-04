@@ -97,7 +97,7 @@ let activeMarker = null;
    const showDevicePopup = (device, marker) => {
     if (!map || !ui) return;
 
-  const glowColor = device.status === "Available" ? "#026873" : "#F2A007";
+  const glowColor = device.status === "Available" ? "#04BFBF" : "#F2A007";
 
     document.getElementById("custom-popup")?.remove();
 
@@ -203,6 +203,64 @@ let activeMarker = null;
 
     document.body.appendChild(popupDiv);
 
+    function smoothEnlargeMarker(marker, glowColor) {
+  let scale = 1;
+  const maxScale = 1.2;
+  const step = 0.1;
+  const originalIcon = marker.originalIcon;
+
+  const interval = setInterval(() => {
+    if (scale >= maxScale) {
+      clearInterval(interval);
+    } else {
+      scale += step;
+      const enlargedIcon = createMarkerIcon(scale, glowColor);
+      marker.setIcon(enlargedIcon);
+    }
+  }, 16);
+}
+
+function smoothShrinkMarker(marker) {
+  let scale = 1.2;
+  const minScale = 1;
+  const step = 0.5;
+  const glowColor = marker.getData()?.status === "Available" ? "#026873" : "#F2A007";
+
+  const interval = setInterval(() => {
+    if (scale <= minScale) {
+      clearInterval(interval);
+      marker.setIcon(marker.originalIcon);
+    } else {
+      scale -= step;
+      const shrinkingIcon = createMarkerIcon(scale, glowColor);
+      marker.setIcon(shrinkingIcon);
+    }
+  }, 16);
+}
+
+function createMarkerIcon(scale, glowColor) {
+  const size = 48 * scale;
+  const anchorY = size * 1.1;
+  const svgMarkup = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24">
+      <defs>
+        <filter id="glow" height="300%" width="300%" x="-75%" y="-75%">
+          <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="${glowColor}" flood-opacity="0.8"/>
+        </filter>
+      </defs>
+      <path d="M12 2C8 2 5 5.1 5 9c0 4.4 7 13 7 13s7-8.6 7-13c0-3.9-3-7-7-7z"
+            fill="#121B22" filter="url(#glow)"/>
+      <path d="M13 7h-2l-1 4h2l-1 4 4-5h-2l1-3z"
+            fill="${glowColor}"/>
+    </svg>
+  `;
+  return new window.H.map.Icon(
+    "data:image/svg+xml;base64," + btoa(svgMarkup),
+    { size: { w: size, h: size }, anchor: { x: size / 2, y: anchorY } }
+  );
+}
+
+
 // Save original icon so we can revert later
 const originalIcon = marker.getIcon();
 
@@ -213,6 +271,10 @@ if (activeMarker && activeMarker !== marker) {
 }
   // Save the current marker's original icon so we can revert it later
   marker.originalIcon = marker.getIcon();
+
+  // Start smooth enlarge
+smoothEnlargeMarker(marker, glowColor);
+activeMarker = marker;  // update active reference
 
 // Create enlarged SVG with bigger glow
 const enlargedSvgMarkup = `
@@ -242,17 +304,16 @@ marker.setIcon(enlargedIcon);
 // Update the active marker reference
 activeMarker = marker;
 
-// On popup close, revert to original icon
+// On popup close, smoothly shrink back
 const closePopup = () => {
   document.getElementById("custom-popup")?.remove();
   if (activeMarker) {
-    activeMarker.setIcon(activeMarker.originalIcon);
+    smoothShrinkMarker(activeMarker);
     activeMarker = null;
   }
 };
 
 document.getElementById("close-popup")?.addEventListener("click", closePopup);
-
 
 
     setTimeout(() => {
@@ -348,7 +409,7 @@ marker.originalIcon = icon; // save original icon immediately
 <div className="bottom-bar">
   <button onClick={() => navigate("/sessions")} className="home-button">
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="30" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
         <path d="M13 2L3 14h9v8l9-12h-9z"/> {/* Thunderbolt */}
       </svg>
       <span style={{ fontFamily: "'Rubik', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Sessions</span>
@@ -357,7 +418,7 @@ marker.originalIcon = icon; // save original icon immediately
 
   <button onClick={() => navigate("/home")} className="scan-button">
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
         <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/> {/* Home */}
       </svg>
       <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Home</span>
@@ -366,7 +427,7 @@ marker.originalIcon = icon; // save original icon immediately
 
   <button onClick={() => navigate("/profile")} className="home-button">
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
         <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8V22h19.2v-2.8c0-3.2-6.4-4.8-9.6-4.8z"/> {/* Profile */}
       </svg>
       <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Profile</span>
