@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import "./styles/appStyles.css";
 
 
 const Home = () => {
@@ -286,32 +287,23 @@ if (connectBtn && device.status === "Available") {
   };
 
   return (
-    <>
-      <style>{`
-        html, body, #root {
-          height: 100%;
-          margin: 0;
-          padding: 0;
-          overflow: hidden;
-          background-color: #0f1a1d;
-        }
-      `}</style>
-      <div style={styles.topBar}>
-        <img src="/logo.png" alt="Sparx Logo" style={styles.logo} />
-      </div>
-      <div style={styles.container}>
-        <div ref={mapRef} style={styles.mapContainer}></div>
-        <div style={styles.buttonContainer}>
-          <button onClick={() => navigate("/sessions")} style={styles.button}>Sessions</button>
-          <button onClick={() => navigate("/home")} style={styles.scanButton}>Home</button>
-          <button onClick={() => navigate("/profile")} style={styles.button}>Profile</button>
-        </div>
+<>
+  <div className="top-bar">
+    <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
+  </div>
+  <div className="home-container">
+    <div ref={mapRef} className="map-container"></div>
+    <div className="button-container">
+      <button onClick={() => navigate("/sessions")} className="home-button">Sessions</button>
+      <button onClick={() => navigate("/home")} className="scan-button">Home</button>
+      <button onClick={() => navigate("/profile")} className="home-button">Profile</button>
+    </div>
+    <button onClick={() => navigate("/qr-scanner")} className="qr-floating-button">
+      <img src="/logo192.png" alt="QR Code" className="qr-icon" />
+    </button>
+  </div>
+</>
 
-        <button onClick={() => navigate("/qr-scanner")} style={styles.qrFloatingButton}>
-          <img src="/logo192.png" alt="QR Code" style={styles.qrIcon} />
-        </button>
-      </div>
-    </>
   );
 };
 

@@ -1,0 +1,120 @@
+/* Base styles for page */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: white;
+  font-family: 'Santoshi', sans-serif;
+}
+
+/* Top bar */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  background-color: #011F26; /* dark blue */
+  box-shadow: 0 2px 12px #04BFBF; /* light neon blue shadow */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1002;
+}
+
+.top-bar-logo {
+  height: 70px;
+  filter: drop-shadow(0 0 6px #04BFBF);
+}
+
+/* Container & Map */
+.home-container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  background-color: white;
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Button container */
+.button-container {
+  position: fixed;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  display: flex;
+  justify-content: space-between;
+  z-index: 1001;
+}
+
+/* Generic buttons */
+.home-button {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+  margin: 0 5px;
+  border-radius: 6px;
+  border: none;
+  background-color: #026873; /* light dull blue */
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 0 8px #04BFBF;
+  transition: all 0.3s ease;
+}
+
+.home-button:hover {
+  transform: scale(1.05);
+}
+
+/* Scan/Home button */
+.scan-button {
+  flex: 1.5;
+  padding: 12px;
+  font-size: 14px;
+  margin: 0 5px;
+  border-radius: 8px;
+  border: none;
+  background-color: #F2A007; /* yellow highlight */
+  color: #121B22; /* extra dark blue for contrast */
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 0 10px #F2A007;
+  transition: all 0.3s ease;
+}
+
+.scan-button:hover {
+  transform: scale(1.05);
+}
+
+/* Floating QR button */
+.qr-floating-button {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #F2A007;
+  border: none;
+  box-shadow: 0 0 12px #F2A007;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1002;
+}
+
+.qr-icon {
+  width: 28px;
+  height: 28px;
+  filter: invert(10%) drop-shadow(0 0 2px #011F26);
+}
