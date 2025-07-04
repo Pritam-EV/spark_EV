@@ -92,8 +92,12 @@ const Home = () => {
     );
   };
 
+let activeMarker = null;
+
    const showDevicePopup = (device, marker) => {
     if (!map || !ui) return;
+
+  const glowColor = device.status === "Available" ? "#026873" : "#F2A007";
 
     document.getElementById("custom-popup")?.remove();
 
@@ -199,6 +203,54 @@ const Home = () => {
 
     document.body.appendChild(popupDiv);
 
+// Save original icon so we can revert later
+const originalIcon = marker.getIcon();
+
+
+  // Revert the previous marker's icon if it exists
+if (activeMarker && activeMarker !== marker) {
+  activeMarker.setIcon(activeMarker.originalIcon);
+}
+  // Save the current marker's original icon so we can revert it later
+  marker.originalIcon = marker.getIcon();
+
+// Create enlarged SVG with bigger glow
+const enlargedSvgMarkup = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24">
+    <defs>
+      <filter id="strong-glow" height="400%" width="400%" x="-150%" y="-150%">
+        <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="${glowColor}" flood-opacity="1"/>
+      </filter>
+    </defs>
+    <path d="M12 2C8 2 5 5.1 5 9c0 4.4 7 13 7 13s7-8.6 7-13c0-3.9-3-7-7-7z"
+          fill="#121B22" filter="url(#strong-glow)"/>
+    <path d="M13 7h-2l-1 4h2l-1 4 4-5h-2l1-3z"
+          fill="${glowColor}"/>
+  </svg>
+`;
+const enlargedIcon = new window.H.map.Icon(
+  "data:image/svg+xml;base64," + btoa(enlargedSvgMarkup),
+  { size: { w: 48, h: 48 }, anchor: { x: 24, y: 48 } }
+);
+marker.setIcon(enlargedIcon);
+
+
+// Update the active marker reference
+activeMarker = marker;
+
+// On popup close, revert to original icon
+const closePopup = () => {
+  document.getElementById("custom-popup")?.remove();
+  if (activeMarker) {
+    activeMarker.setIcon(activeMarker.originalIcon);
+    activeMarker = null;
+  }
+};
+
+document.getElementById("close-popup")?.addEventListener("click", closePopup);
+
+
+
     setTimeout(() => {
       const closePopup = () => document.getElementById("custom-popup")?.remove();
       document.getElementById("close-popup")?.addEventListener("click", closePopup);
@@ -236,18 +288,28 @@ const Home = () => {
 
         const location = new window.H.geo.Point(device.lat, device.lng);
 
-        const svgMarkup = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
-            <defs>
-              <filter id="glow" height="300%" width="300%" x="-75%" y="-75%">
-                <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#86c6d7"/>
-                <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#ff9100"/>
-              </filter>
-            </defs>
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"
-                  fill="#0f1a1d" stroke="#ff9100" stroke-width="1.5" filter="url(#glow)" />
-          </svg>
-        `;
+const glowColor = device.status === "Available" ? "#026873" : "#F2A007";
+
+const svgMarkup = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24">
+    <defs>
+      <filter id="glow" height="300%" width="300%" x="-75%" y="-75%">
+        <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="${glowColor}" flood-opacity="0.8"/>
+      </filter>
+    </defs>
+    <!-- Pin drop shape with fixed dark color -->
+    <path d="M12 2C8 2 5 5.1 5 9c0 4.4 7 13 7 13s7-8.6 7-13c0-3.9-3-7-7-7z"
+          fill="#121B22" filter="url(#glow)"/>
+    <!-- Lightning bolt icon colored with glowColor -->
+    <path d="M13 7h-2l-1 4h2l-1 4 4-5h-2l1-3z"
+          fill="${glowColor}"/>
+  </svg>
+`;
+
+
+
+
+
         const encoded = "data:image/svg+xml;base64," + btoa(svgMarkup);
 
         const icon = new window.H.map.Icon(encoded, {
@@ -255,8 +317,10 @@ const Home = () => {
           anchor: { x: 18, y: 36 },
         });
 
-        const marker = new window.H.map.Marker(location, { icon });
-        marker.setData(device);
+const marker = new window.H.map.Marker(location, { icon });
+marker.setData(device);
+marker.originalIcon = icon; // save original icon immediately
+
 
         marker.addEventListener("tap", (event) => {
           const clickedDevice = event.target.getData();
