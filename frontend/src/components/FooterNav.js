@@ -1,79 +1,47 @@
-// src/components/FooterNav.js
 import React from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const FooterNav = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const currentPath = location.pathname;
 
   return (
-    <div style={styles.floatingNav}>
-      <button
-        onClick={() => navigate("/home")}
-        style={{
-          ...styles.button,
-          ...(currentPath === "/home" ? styles.activeButton : {}),
-        }}
-      >
-        Home
+    <div className="bottom-bar">
+      <button onClick={() => navigate("/sessions")} className="home-button">
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#04BFBF" strokeWidth="1" viewBox="0 0 24 24">
+            <path d="M13 2L3 14h9v8l9-12h-9z"/>
+          </svg>
+          <span style={{ ...styles.buttonText, color: "#04BFBF" }}>Sessions</span>
+        </div>
       </button>
-      <button
-        onClick={() => navigate("/sessions")}
-        style={{
-          ...styles.button,
-          ...(currentPath === "/sessions" ? styles.activeButton : {}),
-        }}
-      >
-        Sessions
+
+      <button onClick={() => navigate("/home")} className="scan-button">
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+          </svg>
+          <span style={{ ...styles.buttonText, color: "#fff" }}>Home</span>
+        </div>
       </button>
-      <button
-        onClick={() => navigate("/profile")}
-        style={{
-          ...styles.button,
-          ...(currentPath === "/profile" ? styles.activeProfileButton : {}),
-        }}
-      >
-        Profile
+
+      <button onClick={() => navigate("/profile")} className="home-button">
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8V22h19.2v-2.8c0-3.2-6.4-4.8-9.6-4.8z"/>
+          </svg>
+          <span style={{ ...styles.buttonText, color: "#fff" }}>Profile</span>
+        </div>
       </button>
     </div>
   );
 };
 
 const styles = {
-  floatingNav: {
-    position: "fixed",
-    bottom: "15px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: "90%",
-    display: "flex",
-    justifyContent: "space-between",
-    zIndex: 100,
-    maxWidth: "420px",
-  },
-  button: {
-    flex: 1,
-    padding: "12px",
-    fontSize: "14px",
-    margin: "0 5px",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#193f4a",
+  buttonText: {
+    fontFamily: "'Open Sans', sans-serif",
+    fontSize: "9px",
+    marginTop: "4px",
     color: "#cdebf5",
-    cursor: "pointer",
-    boxShadow: "0 0 8px #86c6d7",
-    transition: "all 0.3s ease",
-  },
-  activeButton: {
-    backgroundColor: "#00fff7",
-    color: "#000",
-    fontWeight: "bold",
-  },
-  activeProfileButton: {
-    backgroundColor: "#ff9100",
-    color: "#0f1a1d",
-    fontWeight: "bold",
   },
 };
 

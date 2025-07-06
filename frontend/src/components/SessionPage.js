@@ -15,6 +15,8 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useNavigate } from "react-router-dom";
 import FooterNav from "../components/FooterNav";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import IconButton from "@mui/material/IconButton";
 
 const SessionPage = () => {
   const [activeSessions, setActiveSessions] = useState([]);
@@ -51,9 +53,12 @@ const SessionPage = () => {
       const token = localStorage.getItem("token");
       if (!token) return;
 
-      const res = await axios.get("https://spark-ev-backend.onrender.com/api/sessions/user-sessions", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(
+        "https://spark-ev-backend.onrender.com/api/sessions/user-sessions",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       const { activeSessions = [], pastSessions = [] } = res.data;
       setActiveSessions(activeSessions);
@@ -72,106 +77,157 @@ const SessionPage = () => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: "95vh",
-        padding: { xs: 2, sm: 3 },
-        background: "linear-gradient(145deg, #0b0e13, #111a21)",
-        color: "#e1f5f5",
-      }}
-    >
-      <Typography variant="h5" sx={{ fontWeight: "", color: "#04BFBF", mb: 2 }}>
-        🔌 My Charging Sessions
-      </Typography>
+    
+    <>
+      <style>
+    {`
+      .top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  background-color: #001f26; /* dark blue */
+  box-shadow: 0 2px 12px #04BFBF; /* light neon blue shadow */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1002;
+      }
+.top-bar-logo {
+  height: 70px;
+  filter: drop-shadow(0 0 6px #04BFBF);
+      }
+    `}
+  </style>
+      {/* Top Bar */}
+    
+      <div className="top-bar">
+        <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
+      </div>
 
-      <Button
-        variant="outlined"
-        onClick={fetchSessions}
-        sx={{
-          mb: 3,
-          color: "#04BFBF",
-          borderColor: "#04BFBF",
-          "&:hover": {
-            backgroundColor: "#04BFBF",
-            color: "#0b0e13",
-          },
+  {/* Spacer pushes the rest of the content down */}
+  <div style={{ height: "60px" }} /> {/* matches top bar + logo height */}
+
+      <Box
+      sx={{
+       minHeight: "95vh",
+       padding: { xs: 2, sm: 3 },
+       paddingTop: "80px",            // 👈 add this line
+        background: "#ffffff",
+        color: "#011F26",
         }}
       >
-        🔄 Refresh
-      </Button>
+<Box sx={{ position: "relative", mb: 2 }}>
+  <Typography
+    variant="h5"
+    sx={{
+      fontWeight: "bold",
+      color: "#011F26",
+      mb: 1,
+    }}
+  >
+         My Charging Sessions
+  </Typography>
 
-      {loading ? (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
-          <CircularProgress sx={{ color: "#04BFBF" }} />
-        </Box>
-      ) : (
-        <>
-          {/* ACTIVE SESSION ACCORDION */}
-          <Accordion defaultExpanded sx={accordionStyle}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "#7de0dd" }} />}>
-              <Typography variant="h6" sx={{ color: "#7de0dd" }}>⚡ Active Sessions</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              {activeSessions.length === 0 ? (
-                <Typography variant="body2" sx={{ color: "#9bcdd2" }}>No active sessions found.</Typography>
-              ) : (
-                activeSessions.map((s) => (
-                  <SessionCard key={s.sessionId} session={s} isActive navigate={navigate} />
-                ))
-              )}
-            </AccordionDetails>
-          </Accordion>
+  <IconButton
+    onClick={fetchSessions}
+    sx={{
+      position: "absolute",
+      right: 0,
+      top: 0,
+      color: "#04BFBF",
+      "&:hover": { color: "#011F26" },  
+    }}
+  >
+    <RefreshIcon />
+  </IconButton>
+</Box>
 
-          {/* PAST SESSION ACCORDION */}
-          <Accordion sx={accordionStyle}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "#7de0dd" }} />}>
-              <Typography variant="h6" sx={{ color: "#7de0dd" }}>📋 Past Sessions</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{ mb: 2, display: "flex", flexWrap: "wrap", gap: 2 }}>
-                <TextField
-                  label="From"
-                  type="date"
-                  name="startDate"
-                  value={filter.startDate}
-                  onChange={handleDateChange}
-                  InputLabelProps={{ shrink: true }}
-                  sx={filterInputStyle}
-                />
-                <TextField
-                  label="To"
-                  type="date"
-                  name="endDate"
-                  value={filter.endDate}
-                  onChange={handleDateChange}
-                  InputLabelProps={{ shrink: true }}
-                  sx={filterInputStyle}
-                />
-              </Box>
-              {filteredPastSessions.length === 0 ? (
-                <Typography variant="body2" sx={{ color: "#9bcdd2" }}>No past sessions found.</Typography>
-              ) : (
-                filteredPastSessions.map((s) => (
-                  <SessionCard key={s.sessionId} session={s} isActive={false} navigate={navigate} />
-                ))
-              )}
-            </AccordionDetails>
-          </Accordion>
-        </>
-      )}
 
+
+        {loading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
+            <CircularProgress sx={{ color: "#04BFBF" }} />
+          </Box>
+        ) : (
+          <>
+            {/* ACTIVE SESSION ACCORDION */}
+            <Accordion defaultExpanded sx={accordionStyle}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "#011F26" }} />}>
+                <Typography variant="h6" sx={{ color: "#011F26" }}>
+                  Active Sessions
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {activeSessions.length === 0 ? (
+                  <Typography variant="body2" sx={{ color: "#9bcdd2" }}>
+                    No active sessions found.
+                  </Typography>
+                ) : (
+                  activeSessions.map((s) => (
+                    <SessionCard key={s.sessionId} session={s} isActive navigate={navigate} />
+                  ))
+                )}
+              </AccordionDetails>
+            </Accordion>
+
+            {/* PAST SESSION ACCORDION */}
+            <Accordion sx={accordionStyle}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "#011F26" }} />}>
+                <Typography variant="h6" sx={{ color: "#011F26" }}>
+                   Past Sessions
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box sx={{ mb: 2, display: "flex", flexWrap: "wrap", gap: 2 }}>
+                  <TextField
+                    label="From"
+                    type="date"
+                    name="startDate"
+                    value={filter.startDate}
+                    onChange={handleDateChange}
+                    InputLabelProps={{ shrink: true }}
+                    sx={filterInputStyle}
+                  />
+                  <TextField
+                    label="To"
+                    type="date"
+                    name="endDate"
+                    value={filter.endDate}
+                    onChange={handleDateChange}
+                    InputLabelProps={{ shrink: true }}
+                    sx={filterInputStyle}
+                  />
+                </Box>
+                {filteredPastSessions.length === 0 ? (
+                  <Typography variant="body2" sx={{ color: "#9bcdd2" }}>
+                    No past sessions found.
+                  </Typography>
+                ) : (
+                  filteredPastSessions.map((s) => (
+                    <SessionCard key={s.sessionId} session={s} isActive={false} navigate={navigate} />
+                  ))
+                )}
+              </AccordionDetails>
+            </Accordion>
+          </>
+        )}
+      </Box>
+
+      {/* Bottom Bar */}
       <FooterNav />
-    </Box>
+    </>
   );
 };
 
 const SessionCard = ({ session, isActive, navigate }) => (
   <Card
     sx={{
-      background: "linear-gradient(to right, #1e2c3a, #243745)",
+      background: "linear-gradient(to right,rgb(9, 36, 63), #243745)",
       borderRadius: "16px",
       mb: 2,
-      boxShadow: "0 0 10px rgba(4, 191, 191, 0.2)",
+      boxShadow: "0 0 10px rgba(151, 241, 241, 0.2)",
     }}
   >
     <CardContent>
@@ -188,10 +244,10 @@ const SessionCard = ({ session, isActive, navigate }) => (
             onClick={() =>
               navigate(`/session/${session.sessionId}`, {
                 state: {
-                    deviceId: session.deviceId,
-                    amountPaid: session.amountPaid,
-                    energySelected: session.energySelected,
-                    transactionId: session.transactionId,
+                  deviceId: session.deviceId,
+                  amountPaid: session.amountPaid,
+                  energySelected: session.energySelected,
+                  transactionId: session.transactionId,
                 },
               })
             }
@@ -237,5 +293,6 @@ const filterInputStyle = {
   },
 };
 
+
+
 export default SessionPage;
- 
