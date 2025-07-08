@@ -4,12 +4,14 @@ import useMQTTClient from "../hooks/useMQTTClient";
 import axios from "axios";
 import "../styles4.css";
 import FooterNav from "../components/FooterNav";
+const { transactionId: txnFromParams } = useParams();
 
 function SessionStatus() {
 const location = useLocation();
 const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
 const locationMeta = location.state || {};
-const transactionId = locationMeta.transactionId || localMeta.transactionId;
+const transactionId = locationMeta.transactionId || localMeta.transactionId || txnFromParams;
+
 const amountPaid = locationMeta.amountPaid || localMeta.amountPaid;
 const energySelected = locationMeta.energySelected || localMeta.energySelected;
 const deviceId = locationMeta.deviceId || localMeta.deviceId;
@@ -243,8 +245,10 @@ if (!activeDeviceId || !txnId) {
 localStorage.setItem("sessionMeta", JSON.stringify({
   transactionId: txnId,
   amountPaid: paid,
-  energySelected: energy
+  energySelected: energy,
+  deviceId: deviceId || sessionData.deviceId,
 }));
+
 
     await waitForMQTTConnection();
     startCharging();
