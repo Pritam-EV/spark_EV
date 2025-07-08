@@ -4,10 +4,11 @@ import useMQTTClient from "../hooks/useMQTTClient";
 import axios from "axios";
 import "../styles4.css";
 import FooterNav from "../components/FooterNav";
-const { transactionId: txnFromParams } = useParams();
+
 
 function SessionStatus() {
 const location = useLocation();
+const { transactionId: txnFromParams } = useParams();
 const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
 const locationMeta = location.state || {};
 const transactionId = locationMeta.transactionId || localMeta.transactionId || txnFromParams;
