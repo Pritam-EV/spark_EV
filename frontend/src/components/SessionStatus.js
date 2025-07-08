@@ -167,18 +167,23 @@ const handleMQTTMessage = (topic, value) => {
     setCharging(value === "ON");
   }
 
-  if (topic === `${deviceId}/energy` && !isNaN(energy)) {
-    setCurrentEnergy(energy);
+if (topic === `${deviceId}/energy` && !isNaN(energy)) {
+  console.log("📡 Energy Received:", energy);
+  setCurrentEnergy(energy);
 
-    if (startEnergy === null && charging) {
-      setStartEnergy(energy);
-    }
-
-    if (charging && startEnergy !== null) {
-      const delta = energy - startEnergy;
-      setDeltaEnergy(parseFloat(delta.toFixed(3)));
-    }
+  if (startEnergy === null) {
+    console.log("🔋 Setting startEnergy:", energy);
+    setStartEnergy(energy);
   }
+
+  if (startEnergy !== null) {
+    const delta = energy - startEnergy;
+    const rounded = parseFloat(delta.toFixed(3));
+    setDeltaEnergy(rounded);
+    console.log("⚡ deltaEnergy:", rounded);
+  }
+}
+
 
   if (topic === `${deviceId}/voltage`) {
     setSessionData((prev) => ({ ...prev, voltage: value }));
@@ -305,7 +310,8 @@ useEffect(() => {
   const interval = setInterval(() => {
     const energy = deltaEnergy;
     const totalAmount = parseFloat((energy * FIXED_RATE_PER_KWH).toFixed(2));
-
+  console.log("🧾 Calculated deltaEnergy:", deltaEnergy);
+  console.log("💸 Calculated amountUsed:", totalAmount);
     setSessionData((prev) => ({
       ...prev,
       energyConsumed: energy,
