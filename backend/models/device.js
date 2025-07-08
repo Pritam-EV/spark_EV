@@ -8,6 +8,7 @@ const deviceSchema = new mongoose.Schema({
   status: { type: String, required: true },
   charger_type: { type: String, required: true },
   current_session_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', default: null },
+    rate: { type: Number, required: true, default: 20 }, // Default ₹20/kWh
 });
 
 const Device = mongoose.models.Device || mongoose.model('Device', deviceSchema);

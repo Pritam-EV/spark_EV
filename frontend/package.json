@@ -2,7 +2,7 @@
   "homepage": ".",
   "name": "frontend",
   "version": "0.1.0",
-  "proxy": "https://spark-ev-backend.onrender.com",  
+  "proxy": "https://spark-ev-backend.onrender.com",
   "private": true,
   "dependencies": {
     "@blackbox-vision/react-qr-reader": "^5.0.0",
@@ -10,17 +10,19 @@
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.5",
     "@mui/material": "^5.14.5",
+    "@mui/x-date-pickers": "^8.7.0",
     "@react-google-maps/api": "^2.20.6",
     "@react-oauth/google": "^0.12.1",
     "@yudiel/react-qr-scanner": "^2.2.1",
     "ajv": "^6.12.6",
     "ajv-keywords": "^3.5.2",
-    "axios": "^0.27.2",
+    "axios": "^1.10.0",
     "browserify-zlib": "^0.2.0",
     "buffer": "^6.0.3",
     "cra-template": "1.2.0",
     "crypto": "npm:crypto-browserify",
     "crypto-browserify": "^3.12.1",
+    "date-fns": "^4.1.0",
     "firebase": "^11.4.0",
     "jwt-decode": "^4.0.0",
     "leaflet": "^1.9.4",
@@ -35,7 +37,7 @@
     "react-qr-reader": "^3.0.0-beta-1",
     "react-qr-scanner": "^1.0.0-alpha.11",
     "react-router-dom": "^7.1.1",
-    "react-scripts": "^5.0.1",
+  "react-scripts": "5.0.1",
     "rm": "^0.1.8",
     "serve": "^14.2.4",
     "stream": "npm:stream-browserify",
@@ -72,6 +74,6 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "react-app-rewired": "^2.2.1"
+    "react-app-rewired": "^0.1.0"
   }
 }

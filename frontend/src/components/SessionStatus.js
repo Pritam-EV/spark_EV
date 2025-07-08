@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import mqtt from "mqtt";
+import useMQTTClient from "../hooks/useMQTTClient";
 import axios from "axios";
 import "../styles4.css";
 import FooterNav from "../components/FooterNav";
 
-
-const MQTT_BROKER_URL = "223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud";
-const MQTT_PORT = "8884";
-const MQTT_USER = "pritam";
-const MQTT_PASSWORD = "Pritam123";
-
 function SessionStatus() {
-  const { transactionId } = useParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { deviceId, amountPaid, energySelected } = location.state || {};
+const location = useLocation();
+const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
+const { transactionId, amountPaid, energySelected, deviceId: fallbackDeviceId } = location.state || localMeta || {};
+const { deviceId } = location.state || fallbackDeviceId;
+const navigate = useNavigate();
+const [relayConfirmed, setRelayConfirmed] = useState(false);
+const [startEnergy, setStartEnergy] = useState(null);      // Energy when session started
+const [currentEnergy, setCurrentEnergy] = useState(null);  // Latest total energy from ESP32
+const [deltaEnergy, setDeltaEnergy] = useState(0);         // Energy consumed in this session
 
   const [sessionData, setSessionData] = useState(() => {
     return JSON.parse(localStorage.getItem("activeSession")) || {
@@ -31,68 +30,17 @@ function SessionStatus() {
     };
   });
 
+
+
+
+
   const [charging, setCharging] = useState(false);
   const [relayStartTime, setRelayStartTime] = useState(null);
   const FIXED_RATE_PER_KWH = 20; // ₹20 per kWh
-  const [mqttClient, setMqttClient] = useState(null);
+
   const [sessionStarted, setSessionStarted] = useState(false);
 
-  useEffect(() => {
 
-  if (!deviceId && !sessionData?.deviceId) {
-    console.warn("⚠️ Device ID not available yet. Skipping MQTT init.");
-    return;
-  }
-
-  const activeDeviceId = deviceId || sessionData.deviceId;
-  const voltageTopic = `${activeDeviceId}/voltage`;
-  const currentTopic = `${activeDeviceId}/current`;
-  const relayTopic = `${activeDeviceId}/relay`;
-
-  console.log("📡 Subscribing to:", voltageTopic, currentTopic, relayTopic);
-
-    const client = mqtt.connect(`wss://${MQTT_BROKER_URL}:${MQTT_PORT}/mqtt`, {
-      username: MQTT_USER,
-      password: MQTT_PASSWORD,
-      rejectUnauthorized: false,
-    });
-
-client.on("connect", () => {
-  console.log("✅ MQTT Connected");
-  setMqttClient(client);
-  client.subscribe([voltageTopic, currentTopic, relayTopic]);
-
-  if (localStorage.getItem("sessionStarted") === "true") {
-    console.log("⚡ MQTT Connected: Session still active, starting relay.");
-    client.publish(relayTopic, "ON");
-    setRelayStartTime(Date.now());
-    setCharging(true);
-  } else {
-    console.log("🛑 MQTT Connected: No active session, skipping relay ON.");
-  }
-});
-
-
-    client.on("message", (topic, message) => {
-      const data = parseFloat(message.toString());
-      setSessionData((prev) => ({
-        ...prev,
-      voltage: topic === voltageTopic ? data : prev.voltage,
-      current: topic === currentTopic ? data : prev.current,
-
-      }));
-    });
-
-    client.on("error", (err) => console.error("❌ MQTT Error:", err));
-    client.on("reconnect", () => console.warn("♻️ MQTT Reconnecting..."));
-    client.on("close", () => console.warn("🔌 MQTT Connection Closed"));
-    client.on("offline", () => console.warn("📴 MQTT Offline"));
-
-return () => {
-  console.log("🟡 Skipping MQTT disconnect on unmount to preserve session.");
-  // client.end(); <-- Comment this out to keep MQTT alive even if component unmounts
-};
-  }, [deviceId, sessionData?.deviceId]);
 
 
   useEffect(() => {
@@ -102,16 +50,16 @@ return () => {
         const token = localStorage.getItem("token");
         if (!token) return;
 
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/api/sessions/active`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+const response = await axios.get(
+  `${process.env.REACT_APP_API_URL}/api/sessions/active?deviceId=${deviceId || sessionData.deviceId}`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
 
-        if (response.data) {
+
+        if (response.data && response.data.sessionId) {
           console.log("✅ Active session found:", response.data);
           setSessionData(response.data);
           localStorage.setItem("activeSession", JSON.stringify(response.data));
-          setCharging(true);
           setSessionStarted(true); // <-- Add this to prevent false negatives
           return;
         }
@@ -119,21 +67,25 @@ return () => {
         console.warn("⚠️ No active session found. Proceeding to start a new session.");
       }
 
-      const localSessionStarted = localStorage.getItem("sessionStarted") === "true";
+const localSessionStarted = localStorage.getItem("sessionStarted") === "true";
+const effectiveTransactionId = transactionId || localMeta.transactionId;
+const effectiveAmountPaid = amountPaid || localMeta.amountPaid;
+const effectiveEnergySelected = energySelected || localMeta.energySelected;
+const effectiveDeviceId = deviceId || localMeta.deviceId;
 
-      if (transactionId && !sessionStarted && !localSessionStarted) {
-        startSession();
-      } else {
-        console.log("⚠️ Skipping startSession(): Session already started.");
-        await startSession(); // Ensure relay ON if session is already started
-      }
-      
-    };
+if (effectiveTransactionId && effectiveDeviceId && !sessionStarted && !localSessionStarted) {
+  await startSession(effectiveTransactionId, effectiveAmountPaid, effectiveEnergySelected);
+} else {
+  console.log("⚠️ Skipping startSession(): Either session already started or missing transactionId/deviceId.");
+}
+
+
+};
 
     checkActiveSession();
   }, [transactionId, deviceId]);
 
-  const waitForMQTTConnection = (timeout = 5000) => {
+  const waitForMQTTConnection = (timeout = 50000) => {
     return new Promise((resolve, reject) => {
       let settled = false;
   
@@ -183,99 +135,111 @@ return () => {
     });
   };
   
-  
-  const startSession = async () => {
-    try {
-      const token = localStorage.getItem("token");
+const handleMQTTMessage = (topic, value) => {
+  const energy = parseFloat(value);
 
-      if (!token) {
-        console.error("⚠️ No authentication token found!");
-        return;
-      }
+  if (topic === `${deviceId}/relayState`) {
+    setCharging(value === "ON");
+  }
 
-      console.log("🔹 Checking session data before request:", {
-        deviceId,
-        transactionId,
-        amountPaid,
-        energySelected,
-      });
+  if (topic === `${deviceId}/energy` && !isNaN(energy)) {
+    setCurrentEnergy(energy);
 
-      if (!deviceId || !transactionId) {
-        console.error("⚠️ Missing deviceId or transactionId!");
-        return;
-      }
-
-      const sessionId = "session_" + new Date().getTime();
-
-      const now = new Date();
-      const formattedDate = now.toISOString().split("T")[0];
-      const formattedTime = now.toISOString(); // already in UTC
-      
-
-      console.log("📤 Sending session start request:", {
-        sessionId,
-        transactionId,
-        formattedTime,
-        amountPaid,
-        energySelected,
-      });
-
-      const response = await axios.post(
-        "https://spark-ev-backend.onrender.com/api/sessions/start",
-        {
-          sessionId,
-          deviceId,
-          transactionId,
-          startTime: formattedTime,
-          startDate: formattedDate,
-          amountPaid,
-          energySelected,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      console.log("🟢 Server Response:", response.data);
-
-      const data = response.data;
-
-      if (!data.sessionId) {
-        console.error("⚠️ Server did not return a valid sessionId!");
-        return;
-      }
-
-      console.log("✅ Session started successfully:", data);
-
-      setSessionData((prev) => ({
-        ...prev,
-        sessionId: data.sessionId || sessionId,
-        startTime: formattedTime,
-        startDate: formattedDate,
-        amountPaid,
-        energySelected,
-      }));
-
-      setSessionStarted(true);
-      localStorage.setItem("sessionStarted", "true");
-
-    } catch (error) {
-      console.error("❌ Failed to start session:", error.message);
+    if (startEnergy === null && charging) {
+      setStartEnergy(energy);
     }
 
-      try {
-        await waitForMQTTConnection(); // ✅ Wait for MQTT
-        startCharging(); // ✅ Only start charging after MQTT is ready
+    if (charging && startEnergy !== null) {
+      const delta = energy - startEnergy;
+      setDeltaEnergy(parseFloat(delta.toFixed(3)));
+    }
+  }
 
-        console.log("🔌 Proceeding to start charging...");
-        // continue with relay publish / charging logic
-      } catch (error) {
-        console.error("❌ Failed to start charging:", error);
-       
+  if (topic === `${deviceId}/voltage`) {
+    setSessionData((prev) => ({ ...prev, voltage: value }));
+  }
+
+  if (topic === `${deviceId}/current`) {
+    setSessionData((prev) => ({ ...prev, current: value }));
+  }
+};
+
+
+const { mqttClient, connected, publish } = useMQTTClient(
+  deviceId || sessionData?.deviceId,
+  handleMQTTMessage
+);
+
+
+
+const startSession = async (txnId, paid, energy) => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+const activeDeviceId = deviceId || localMeta.deviceId;
+if (!activeDeviceId || !txnId) {
+  console.error("⚠️ Missing deviceId or transactionId!");
+  return;
+}
+
+
+    const sessionId = "session_" + new Date().getTime();
+    const now = new Date();
+    const formattedDate = now.toISOString().split("T")[0];
+    const formattedTime = now.toISOString();
+
+    const response = await axios.post(
+      `${process.env.REACT_APP_API_URL}/api/sessions/start`,
+      {
+        sessionId,
+        deviceId,
+        transactionId: txnId,
+        startTime: formattedTime,
+        startDate: formattedDate,
+        amountPaid: paid,
+        energySelected: energy,
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` },
       }
-  };
+    );
+
+    const data = response.data;
+
+    setSessionData((prev) => ({
+      ...prev,
+      sessionId: data.sessionId || sessionId,
+      startTime: formattedTime,
+      startDate: formattedDate,
+      amountPaid: paid,
+      energySelected: energy,
+    }));
+
+    setSessionStarted(true);
+    localStorage.setItem("sessionStarted", "true");
+    localStorage.setItem("sessionMeta", JSON.stringify({
+      transactionId: txnId,
+      amountPaid: paid,
+      energySelected: energy
+    }));
+
+    await waitForMQTTConnection();
+    startCharging();
+  } catch (err) {
+    console.error("❌ Failed to start session:", err.message);
+  }
+};
+useEffect(() => {
+  if (transactionId && amountPaid && energySelected && deviceId) {
+    localStorage.setItem(
+      "sessionMeta",
+      JSON.stringify({ transactionId, amountPaid, energySelected, deviceId })
+    );
+  }
+}, [transactionId, amountPaid, energySelected, deviceId]);
+
+
 
   useEffect(() => {
     localStorage.setItem("activeSession", JSON.stringify(sessionData));
@@ -285,11 +249,12 @@ return () => {
   
 
 useEffect(() => {
-  if (charging && mqttClient) {
-    console.log("⚡ Resuming charging on reconnect...");
+  if (sessionStarted && mqttClient) {
+    console.log("⚡ Resuming charging after reconnect or reload...");
     startCharging();
   }
-}, [mqttClient, charging]);
+}, [mqttClient, sessionStarted]);
+
 
   
   
@@ -375,34 +340,37 @@ useEffect(() => {
   let retryCount = 0;
   const MAX_RETRIES = 5;
   
-  const startCharging = () => {
-    console.log("🚀 Attempting to Start Charging...");
+const startCharging = () => {
+  console.log("🚀 Attempting to Start Charging...");
 
   if (!mqttClient || !mqttClient.connected) {
     if (retryCount >= MAX_RETRIES) {
-      console.error("Exceeded MQTT connection retries.");
+      console.error("❌ Exceeded MQTT connection retries.");
       return;
     }
     retryCount++;
     setTimeout(startCharging, 1000);
     return;
   }
-  retryCount = 0; // Reset on success
-    if (charging) {
-      console.log("⏭️ Charging already in progress. Skipping relay ON.");
-      return;
-    }
-    const activeDeviceId = deviceId || sessionData?.deviceId;
-    const relayTopic = `${activeDeviceId}/relay`;
-    mqttClient.publish(relayTopic, "ON", () => {
-      console.log("✅ Charging Started via MQTT (inside startCharging)");
-      setRelayStartTime(Date.now());
-      setLastUpdateTime(Date.now());  // <<< ADD THIS LINE
-      setCharging(true);
-  });
-  
 
-  };
+  retryCount = 0; // Reset retry on success
+
+if (!sessionData.sessionId) {
+  console.warn("⚠️ No session ID. Skipping relay publish.");
+  return;
+}
+
+
+  const activeDeviceId = deviceId || sessionData?.deviceId;
+  const relayTopic = `${activeDeviceId}/relayState`;
+
+  console.log(`📡 Publishing "ON" to ${relayTopic}`);
+  publish(relayTopic, "ON");
+
+  setCharging(true); // <-- ✅ Make sure we mark this
+  setRelayStartTime(Date.now());
+};
+
 
   const stopCharging = async (triggerType = "manual") => {
     console.warn("⚠️ stopCharging() Triggered:", triggerType);
@@ -413,16 +381,17 @@ useEffect(() => {
 
     console.log("Stopping session with ID:", sessionData.sessionId);
 
-    if (mqttClient) {
-      const activeDeviceId = deviceId || sessionData?.deviceId;
-      const relayTopic = `${activeDeviceId}/relay`;
+if (mqttClient) {
+  const activeDeviceId = deviceId || sessionData?.deviceId;
+  const relayTopic = `${activeDeviceId}/relayState`;
 
-      mqttClient.publish(relayTopic, "OFF", () => {
-        console.log("Charging Stopped via MQTT");
-      });
-    }
+  console.log(`📡 Publishing "OFF" to ${relayTopic}`);
+  publish(relayTopic, "OFF");
+}
+
 
     setCharging(false);
+setRelayConfirmed(false);
 
     const now = new Date();
     const istDate = new Date(now.getTime());
@@ -453,6 +422,7 @@ useEffect(() => {
 
       localStorage.removeItem("activeSession");
       localStorage.removeItem("sessionStarted");
+      localStorage.removeItem("sessionMeta");
 
       setSessionData(null);
       navigate("/session-summary", {
@@ -462,6 +432,22 @@ useEffect(() => {
       console.error("❌ Failed to stop session:", error.response?.data || error.message);
     }
   };
+
+const [autoStopped, setAutoStopped] = useState(false);
+
+useEffect(() => {
+  if (
+    charging &&
+    energySelected &&
+    deltaEnergy >= energySelected &&
+    !autoStopped
+  ) {
+    console.log("⚠️ Auto-stopping due to energy limit...");
+    stopCharging();
+    setAutoStopped(true);
+  }
+}, [deltaEnergy, energySelected, charging, autoStopped]);
+
 
 const [isDragging, setIsDragging] = useState(false);
 const [thumbLeft, setThumbLeft] = useState(0);
@@ -550,9 +536,10 @@ useEffect(() => {
             <p>
               <strong>MQTT Status:</strong> {mqttClient?.connected ? "Connected" : "Connecting..."}
             </p>
-            <p className={`status ${charging ? "charging" : "stopped"}`}>
-              {charging ? "Charging in Progress" : "Charging Stopped"}
-            </p>
+<p className={`status ${relayConfirmed ? "charging" : "stopped"}`}>
+  {relayConfirmed ? "Charging in Progress" : "Charging Stopped"}
+</p>
+
           </div>
 
           <div className="charging-progress-card">
@@ -587,9 +574,10 @@ useEffect(() => {
             </div>
             <div className="live-value">
 <p className="large-text">
-  {sessionData.energyConsumed > 0
-    ? sessionData.energyConsumed.toFixed(3)
-    : "Calculating..."} kWh
+{sessionData.energyConsumed > 0
+  ? sessionData.energyConsumed.toFixed(3)
+  : deltaEnergy.toFixed(3)} kWh
+
 </p>
 
 

@@ -56,28 +56,6 @@ app.use(
 );
 
 
-// ✅ Get all devices
-app.get("/api/devices", async (req, res) => {
-  try {
-    const devices = await Device.find({}, { lat: 1, lng: 1, device_id: 1, location: 1, status: 1, charger_type: 1 });
-    res.json(devices);
-  } catch (err) {
-    console.error("Error fetching devices:", err);
-    res.status(500).json({ message: "Error fetching devices" });
-  }
-});
-
-// ✅ Get a specific device by device_id
-app.get("/api/devices/:device_id", async (req, res) => {
-  try {
-    const device = await Device.findOne({ device_id: req.params.device_id });
-    if (!device) return res.status(404).json({ error: "Device not found" });
-    res.json(device);
-  } catch (error) {
-    console.error("Error fetching device details:", error);
-    res.status(500).json({ error: "Failed to fetch device details" });
-  }
-});
 
 // ✅ Start a session
 app.post("/api/sessions/start", async (req, res) => {

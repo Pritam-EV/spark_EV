@@ -20,18 +20,13 @@ import {
 function ChargingOptions() {
     const { device_id } = useParams();
     const [deviceDetails, setDeviceDetails] = useState(null);
-    const [selectedOption, setSelectedOption] = useState("");
-    const [sliderValue, setSliderValue] = useState(0);
+    const [selectedOption, setSelectedOption] = useState("amount");
+    const [sliderValue, setSliderValue] = useState(100);
     const [estimatedCost, setEstimatedCost] = useState(0);
     const [estimatedEnergy, setEstimatedEnergy] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const pricing = {
-        time: 3,
-        energy: 20,
-        amount: 1,
-    };
 
     const navigate = useNavigate();
 
@@ -58,6 +53,15 @@ function ChargingOptions() {
         fetchDeviceDetails();
     }, [device_id]);
 
+useEffect(() => {
+  if (selectedOption === "amount" && sliderValue > 0 && deviceDetails) {
+    setEstimatedEnergy(sliderValue / (deviceDetails.rate || 20));
+    setEstimatedCost(sliderValue);  // amount == cost
+  }
+}, [deviceDetails, selectedOption, sliderValue]);
+
+
+
     const handleOptionSelect = (option) => {
         setSelectedOption(option);
         setSliderValue(0);
@@ -68,10 +72,10 @@ function ChargingOptions() {
     const handleSliderChange = (event, value) => {
         setSliderValue(value);
         if (selectedOption === "energy") {
-            setEstimatedCost(value * pricing.energy);
+            setEstimatedCost(value * (deviceDetails?.rate || 20));
             setEstimatedEnergy(0);
         } else if (selectedOption === "amount") {
-            setEstimatedEnergy(value / pricing.energy);
+            setEstimatedEnergy(value / (deviceDetails?.rate || 20));
             setEstimatedCost(value);
         }
     };
@@ -175,19 +179,21 @@ function ChargingOptions() {
 
                 {/* Device Details */}
                 <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>Device ID</Typography>
+                    <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>Charger ID</Typography>
                     <Typography variant="subtitle1" sx={{ color: "#ffffff", fontWeight: "bold", fontSize: "0.9rem" }}>
                         {deviceDetails.device_id}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: "#9bcdd2" }}>
+                    <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem"  }}>
                         Location: {deviceDetails.location}
                     </Typography>
-                    <Typography variant="caption" sx={{ color: deviceDetails.status === "available" ? "#04BFBF" : "#f2a007", display: "block" }}>
-                        {deviceDetails.status === "available" ? "Available" : "Occupied"}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#7de0dd" }}>
+                    <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>
                         Charger: {deviceDetails.charger_type}
                     </Typography>
+<Typography variant="caption" sx={{ color: "#7de0dd", display: "block" }}>
+  Rate: ₹{deviceDetails?.rate || 20}/kWh
+</Typography>
+
+
                 </Box>
             </Card>
 
@@ -211,9 +217,12 @@ function ChargingOptions() {
                             onClick={() => handleOptionSelect(option)}
                         >
                             <CardContent>
-                                <Typography variant="body2" sx={{ color: selectedOption === option ? "#0b0e13" : "#7de0dd" }}>
-                                    {option === "energy" ? "Energy-Based" : "Amount-Based"}
-                                </Typography>
+<Typography variant="body2" sx={{ color: selectedOption === option ? "#0b0e13" : "#7de0dd" }}>
+  {option === "energy"
+    ? `Energy-Based `
+    : "Amount-Based"}
+</Typography>
+
                             </CardContent>
                         </Card>
                     </Grid>
@@ -231,7 +240,7 @@ function ChargingOptions() {
                 }}>
                     <Typography variant="body2" sx={{ color: "#e1f5f5", marginBottom: 2 }}>
                         {selectedOption === "energy"
-                            ? "Select Energy (kWh) : ₹20/kWh"
+                            ? "Select Energy (kWh)"
                             : "Select Amount (₹)"}
                     </Typography>
                     <Slider
