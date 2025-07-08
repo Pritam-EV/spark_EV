@@ -8,8 +8,12 @@ import FooterNav from "../components/FooterNav";
 function SessionStatus() {
 const location = useLocation();
 const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
-const { transactionId, amountPaid, energySelected, deviceId: fallbackDeviceId } = location.state || localMeta || {};
-const { deviceId } = location.state || fallbackDeviceId;
+const locationMeta = location.state || {};
+const transactionId = locationMeta.transactionId || localMeta.transactionId;
+const amountPaid = locationMeta.amountPaid || localMeta.amountPaid;
+const energySelected = locationMeta.energySelected || localMeta.energySelected;
+const deviceId = locationMeta.deviceId || localMeta.deviceId;
+
 const navigate = useNavigate();
 const [relayConfirmed, setRelayConfirmed] = useState(false);
 const [startEnergy, setStartEnergy] = useState(null);      // Energy when session started
@@ -39,6 +43,12 @@ const [deltaEnergy, setDeltaEnergy] = useState(0);         // Energy consumed in
   const FIXED_RATE_PER_KWH = 20; // ₹20 per kWh
 
   const [sessionStarted, setSessionStarted] = useState(false);
+console.log("🧾 Final Resolved Meta:", {
+  transactionId,
+  amountPaid,
+  energySelected,
+  deviceId,
+});
 
 
 
