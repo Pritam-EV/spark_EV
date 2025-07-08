@@ -21,7 +21,7 @@ const navigate = useNavigate();
 const [relayConfirmed, setRelayConfirmed] = useState(false);
 const [startEnergy, setStartEnergy] = useState(null);      // Energy when session started
 const [currentEnergy, setCurrentEnergy] = useState(null);  // Latest total energy from ESP32
-const [deltaEnergy, setDeltaEnergy] = useState(0);         // Energy consumed in this session
+const [deltaEnergy, setDeltaEnergy] = useState(null);         // Energy consumed in this session
 
   const [sessionData, setSessionData] = useState(() => {
     return JSON.parse(localStorage.getItem("activeSession")) || {
@@ -34,6 +34,9 @@ const [deltaEnergy, setDeltaEnergy] = useState(0);         // Energy consumed in
       current: 0,
       energyConsumed: 0,
       amountUsed: 0,
+      deltaEnergy: null,
+      currentEnergy: null,
+      startEnergy: null,
     };
   });
 
@@ -46,12 +49,7 @@ const [deltaEnergy, setDeltaEnergy] = useState(0);         // Energy consumed in
   const FIXED_RATE_PER_KWH = 20; // ₹20 per kWh
 
   const [sessionStarted, setSessionStarted] = useState(false);
-console.log("🧾 Final Resolved Meta:", {
-  transactionId,
-  amountPaid,
-  energySelected,
-  deviceId,
-});
+
 useEffect(() => {
   console.log("📊 Energy Debug:", {
     startEnergy,
@@ -174,7 +172,7 @@ const handleMQTTMessage = (topic, value) => {
   if (topic === `${deviceId}/relayState`) {
     const isOn = value === "ON";
     setCharging(isOn);
-
+    setRelayConfirmed(isOn);  // <-- Add this
     if (isOn && startEnergy === null && currentEnergy !== null) {
       // Just started charging → set startEnergy to currentEnergy
       console.log("⚡ Initializing startEnergy:", currentEnergy);
@@ -182,29 +180,43 @@ const handleMQTTMessage = (topic, value) => {
     }
   }
 
-  if (topic === `${deviceId}/energy` && !isNaN(energy)) {
-    setCurrentEnergy(energy);
-
-    // Delay startEnergy setting until relay is confirmed ON
-    if (charging && startEnergy === null) {
-      console.log("⚡ Setting startEnergy from energy topic:", energy);
-      setStartEnergy(energy);
-    }
-
-    if (charging && startEnergy !== null) {
-      const delta = parseFloat((energy - startEnergy).toFixed(3));
-      setDeltaEnergy(delta);
-    }
+if (topic === `${deviceId}/energy`) {
+  const energy = parseFloat(value);
+  if (isNaN(energy)) {
+    console.warn("⚠️ Received invalid energy:", value);
+    return;
   }
 
-  if (topic === `${deviceId}/voltage`) {
-    setSessionData((prev) => ({ ...prev, voltage: value }));
+  setCurrentEnergy(energy);
+
+  if (startEnergy === null && charging) {
+    console.log("⚡ Setting startEnergy (energy arrived after charging ON):", energy);
+    setStartEnergy(energy);
   }
 
-  if (topic === `${deviceId}/current`) {
-    setSessionData((prev) => ({ ...prev, current: value }));
+  if (startEnergy !== null && !isNaN(startEnergy)) {
+    const delta = parseFloat((energy - startEnergy).toFixed(3));
+    console.log("✅ Setting deltaEnergy:", delta);
+    setDeltaEnergy(delta);
   }
+}
+
+
+if (topic === `${deviceId}/voltage`) {
+  setSessionData((prev) => ({ ...prev, voltage: parseFloat(value) || 0 }));
+}
+
+if (topic === `${deviceId}/current`) {
+  setSessionData((prev) => ({ ...prev, current: parseFloat(value) || 0 }));
+}
+
 };
+useEffect(() => {
+  if (charging && startEnergy === null && currentEnergy !== null) {
+    console.log("⚡ [Effect] Setting startEnergy:", currentEnergy);
+    setStartEnergy(currentEnergy);
+  }
+}, [charging, currentEnergy, startEnergy]);
 
 
 
@@ -318,37 +330,49 @@ useEffect(() => {
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
  
 useEffect(() => {
-  if (!charging || startEnergy === null || currentEnergy === null || isNaN(deltaEnergy)) return;
+  if (!charging || startEnergy === null || currentEnergy === null) return;
 
   const interval = setInterval(() => {
-    const energy = deltaEnergy;
-    const totalAmount = parseFloat((energy * FIXED_RATE_PER_KWH).toFixed(2));
+    const delta = parseFloat((currentEnergy - startEnergy).toFixed(3));
+    if (isNaN(delta)) {
+      console.warn("⛔ Computed deltaEnergy is NaN", { startEnergy, currentEnergy });
+      return;
+    }
 
-    console.log("🧾 Calculated deltaEnergy:", deltaEnergy);
+    const totalAmount = parseFloat((delta * FIXED_RATE_PER_KWH).toFixed(2));
+
+    console.log("🧾 Calculated deltaEnergy:", delta);
     console.log("💸 Calculated amountUsed:", totalAmount);
+
+    setDeltaEnergy(delta); // ✅ Now update state correctly
 
     setSessionData((prev) => ({
       ...prev,
-      energyConsumed: energy,
+      energyConsumed: delta,
       amountUsed: totalAmount,
     }));
 
-    axios.post(`${process.env.REACT_APP_API_URL}/api/sessions/update`, {
-      sessionId: sessionData.sessionId,
-      energyConsumed: energy,
-      amountUsed: totalAmount,
-    }).catch((err) => console.error("❌ Session update failed:", err));
+    axios
+      .post(`${process.env.REACT_APP_API_URL}/api/sessions/update`, {
+        sessionId: sessionData.sessionId,
+        energyConsumed: delta,
+        amountUsed: totalAmount,
+      })
+      .catch((err) => console.error("❌ Session update failed:", err));
 
     if (amountPaid && totalAmount >= amountPaid && !autoStopped) {
       console.log("⚠️ Auto-stopping due to ₹ limit...");
       stopCharging("auto");
       setAutoStopped(true);
     }
-  }, 5000); // every 5 sec
+  }, 5000);
 
   return () => clearInterval(interval);
-}, [charging, startEnergy, currentEnergy, deltaEnergy]);
+}, [charging, startEnergy, currentEnergy]);
 
+useEffect(() => {
+  console.log("🧪 DEBUG :: Live deltaEnergy changed:", deltaEnergy);
+}, [deltaEnergy]);
 
   
   let retryCount = 0;
@@ -373,6 +397,7 @@ if (!sessionData.sessionId) {
   console.warn("⚠️ No session ID. Skipping relay publish.");
   return;
 }
+
 
 
   const activeDeviceId = deviceId || sessionData?.deviceId;
@@ -593,11 +618,11 @@ useEffect(() => {
             </div>
             <div className="live-value">
 <p className="large-text">
-{sessionData.energyConsumed > 0
-  ? sessionData.energyConsumed.toFixed(3)
-  : deltaEnergy.toFixed(3)} kWh
-
+  {(parseFloat(sessionData.energyConsumed ?? deltaEnergy) || 0).toFixed(3)} kWh
 </p>
+
+
+
 
 
               <p className="small-text">Energy Consumed</p>

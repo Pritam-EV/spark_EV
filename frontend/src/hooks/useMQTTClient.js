@@ -17,6 +17,7 @@ export default function useMQTTClient(deviceId, onMessage) {
     const voltageTopic = `${deviceId}/voltage`;
     const currentTopic = `${deviceId}/current`;
     const relayTopic = `${deviceId}/relayState`;
+    const energyTopic = `${deviceId}/energy`;  // Add this line
 
     const client = mqtt.connect(MQTT_BROKER_URL, {
       username: MQTT_USER,
@@ -30,7 +31,7 @@ export default function useMQTTClient(deviceId, onMessage) {
     const handleConnect = () => {
       console.log("✅ MQTT Connected");
       setConnected(true);
-      client.subscribe([voltageTopic, currentTopic, relayTopic]);
+      client.subscribe([voltageTopic, currentTopic, relayTopic, energyTopic]);
     };
 
     const handleMessage = (topic, message) => {
