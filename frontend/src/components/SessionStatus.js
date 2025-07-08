@@ -52,6 +52,14 @@ console.log("🧾 Final Resolved Meta:", {
   energySelected,
   deviceId,
 });
+useEffect(() => {
+  console.log("📊 Energy Debug:", {
+    startEnergy,
+    currentEnergy,
+    deltaEnergy,
+    charging,
+  });
+}, [startEnergy, currentEnergy, deltaEnergy, charging]);
 
 
 
@@ -164,26 +172,30 @@ const handleMQTTMessage = (topic, value) => {
   const energy = parseFloat(value);
 
   if (topic === `${deviceId}/relayState`) {
-    setCharging(value === "ON");
+    const isOn = value === "ON";
+    setCharging(isOn);
+
+    if (isOn && startEnergy === null && currentEnergy !== null) {
+      // Just started charging → set startEnergy to currentEnergy
+      console.log("⚡ Initializing startEnergy:", currentEnergy);
+      setStartEnergy(currentEnergy);
+    }
   }
 
-if (topic === `${deviceId}/energy` && !isNaN(energy)) {
-  console.log("📡 Energy Received:", energy);
-  setCurrentEnergy(energy);
+  if (topic === `${deviceId}/energy` && !isNaN(energy)) {
+    setCurrentEnergy(energy);
 
-  if (startEnergy === null) {
-    console.log("🔋 Setting startEnergy:", energy);
-    setStartEnergy(energy);
+    // Delay startEnergy setting until relay is confirmed ON
+    if (charging && startEnergy === null) {
+      console.log("⚡ Setting startEnergy from energy topic:", energy);
+      setStartEnergy(energy);
+    }
+
+    if (charging && startEnergy !== null) {
+      const delta = parseFloat((energy - startEnergy).toFixed(3));
+      setDeltaEnergy(delta);
+    }
   }
-
-  if (startEnergy !== null) {
-    const delta = energy - startEnergy;
-    const rounded = parseFloat(delta.toFixed(3));
-    setDeltaEnergy(rounded);
-    console.log("⚡ deltaEnergy:", rounded);
-  }
-}
-
 
   if (topic === `${deviceId}/voltage`) {
     setSessionData((prev) => ({ ...prev, voltage: value }));
@@ -193,6 +205,7 @@ if (topic === `${deviceId}/energy` && !isNaN(energy)) {
     setSessionData((prev) => ({ ...prev, current: value }));
   }
 };
+
 
 
 const { mqttClient, connected, publish } = useMQTTClient(
@@ -305,13 +318,15 @@ useEffect(() => {
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
  
 useEffect(() => {
-  if (!charging || startEnergy === null || currentEnergy === null) return;
+  if (!charging || startEnergy === null || currentEnergy === null || isNaN(deltaEnergy)) return;
 
   const interval = setInterval(() => {
     const energy = deltaEnergy;
     const totalAmount = parseFloat((energy * FIXED_RATE_PER_KWH).toFixed(2));
-  console.log("🧾 Calculated deltaEnergy:", deltaEnergy);
-  console.log("💸 Calculated amountUsed:", totalAmount);
+
+    console.log("🧾 Calculated deltaEnergy:", deltaEnergy);
+    console.log("💸 Calculated amountUsed:", totalAmount);
+
     setSessionData((prev) => ({
       ...prev,
       energyConsumed: energy,
@@ -329,16 +344,10 @@ useEffect(() => {
       stopCharging("auto");
       setAutoStopped(true);
     }
-
-  }, 5000); // update every 5 seconds
+  }, 5000); // every 5 sec
 
   return () => clearInterval(interval);
 }, [charging, startEnergy, currentEnergy, deltaEnergy]);
-
-
-
-
-
 
 
   
@@ -374,6 +383,11 @@ if (!sessionData.sessionId) {
 
   setCharging(true); // <-- ✅ Make sure we mark this
   setRelayStartTime(Date.now());
+  // ✅ Set start energy immediately if we have a currentEnergy value
+  if (startEnergy === null && currentEnergy !== null) {
+    console.log("✅ [StartCharging] Setting startEnergy:", currentEnergy);
+    setStartEnergy(currentEnergy);
+  }
 };
 
 
