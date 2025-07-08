@@ -327,6 +327,63 @@ useEffect(() => {
 
 
 
+useEffect(() => {
+  if (!charging) return;
+
+  const now = Date.now();
+  if (!lastUpdateTime) {
+    setLastUpdateTime(now); // ✅ Ensure we start tracking
+  }
+
+  const interval = setInterval(() => {
+    const current = Date.now();
+    const durationSeconds = (current - lastUpdateTime) / 1000;
+    setLastUpdateTime(current); // ✅ Update after each cycle
+
+    setSessionData((prev) => {
+      const voltage = parseFloat(prev.voltage);
+      const currentVal = parseFloat(prev.current);
+      const previousEnergy = parseFloat(prev.energyConsumed) || 0;
+
+      if (isNaN(voltage) || isNaN(currentVal)) return prev;
+
+
+      console.log("🔋 Energy Update:", {
+        voltage,
+        current: currentVal,
+        durationSeconds,
+        powerKW,
+        newEnergy,
+        totalEnergy,
+        totalAmount,
+      });
+
+      axios.post("https://spark-ev-backend.onrender.com/api/sessions/update", {
+        sessionId: prev.sessionId,
+        energyConsumed: totalEnergy,
+        amountUsed: totalAmount,
+      }).catch((err) => console.error("❌ Session update failed:", err));
+
+      if (totalAmount >= (amountPaid || 0)) {
+        stopCharging("auto");
+        clearInterval(interval);
+      }
+
+      return {
+        ...prev,
+        energyConsumed: totalEnergy,
+        amountUsed: totalAmount,
+      };
+    });
+  }, 5000); // every 5 seconds
+
+  return () => {
+    clearInterval(interval);
+    setLastUpdateTime(null);
+  };
+}, [charging]);
+
+
   
   let retryCount = 0;
   const MAX_RETRIES = 5;
