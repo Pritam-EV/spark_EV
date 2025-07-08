@@ -299,68 +299,32 @@ useEffect(() => {
 
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
  
-
 useEffect(() => {
-  if (!charging) return;
+  if (!charging || startEnergy === null || currentEnergy === null) return;
 
-  const now = Date.now();
-  if (!lastUpdateTime) {
-    setLastUpdateTime(now); // ✅ Ensure we start tracking
+  const totalAmount = parseFloat((deltaEnergy * FIXED_RATE_PER_KWH).toFixed(2));
+
+  setSessionData((prev) => ({
+    ...prev,
+    energyConsumed: deltaEnergy,
+    amountUsed: totalAmount,
+  }));
+
+  // 💾 Sync to DB
+  axios.post(`${process.env.REACT_APP_API_URL}/api/sessions/update`, {
+    sessionId: sessionData.sessionId,
+    energyConsumed: deltaEnergy,
+    amountUsed: totalAmount,
+  }).catch((err) => console.error("❌ Session update failed:", err));
+  
+  // ⛔ Auto stop
+  if (amountPaid && totalAmount >= amountPaid && !autoStopped) {
+    stopCharging("auto");
+    setAutoStopped(true);
   }
+}, [deltaEnergy, charging]);
 
-  const interval = setInterval(() => {
-    const current = Date.now();
-    const durationSeconds = (current - lastUpdateTime) / 1000;
-    setLastUpdateTime(current); // ✅ Update after each cycle
 
-    setSessionData((prev) => {
-      const voltage = parseFloat(prev.voltage);
-      const currentVal = parseFloat(prev.current);
-      const previousEnergy = parseFloat(prev.energyConsumed) || 0;
-
-      if (isNaN(voltage) || isNaN(currentVal)) return prev;
-
-      const powerKW = (voltage * currentVal) / 1000;
-      const durationHours = durationSeconds / 3600;
-      const newEnergy = powerKW * durationHours;
-
-      const totalEnergy = previousEnergy + newEnergy;
-      const totalAmount = totalEnergy * FIXED_RATE_PER_KWH;
-
-      console.log("🔋 Energy Update:", {
-        voltage,
-        current: currentVal,
-        durationSeconds,
-        powerKW,
-        newEnergy,
-        totalEnergy,
-        totalAmount,
-      });
-
-      axios.post("https://spark-ev-backend.onrender.com/api/sessions/update", {
-        sessionId: prev.sessionId,
-        energyConsumed: totalEnergy,
-        amountUsed: totalAmount,
-      }).catch((err) => console.error("❌ Session update failed:", err));
-
-      if (totalAmount >= (amountPaid || 0)) {
-        stopCharging("auto");
-        clearInterval(interval);
-      }
-
-      return {
-        ...prev,
-        energyConsumed: totalEnergy,
-        amountUsed: totalAmount,
-      };
-    });
-  }, 5000); // every 5 seconds
-
-  return () => {
-    clearInterval(interval);
-    setLastUpdateTime(null);
-  };
-}, [charging]);
 
 
   
