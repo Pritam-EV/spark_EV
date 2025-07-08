@@ -302,27 +302,33 @@ useEffect(() => {
 useEffect(() => {
   if (!charging || startEnergy === null || currentEnergy === null) return;
 
-  const totalAmount = parseFloat((deltaEnergy * FIXED_RATE_PER_KWH).toFixed(2));
+  const interval = setInterval(() => {
+    const energy = deltaEnergy;
+    const totalAmount = parseFloat((energy * FIXED_RATE_PER_KWH).toFixed(2));
 
-  setSessionData((prev) => ({
-    ...prev,
-    energyConsumed: deltaEnergy,
-    amountUsed: totalAmount,
-  }));
+    setSessionData((prev) => ({
+      ...prev,
+      energyConsumed: energy,
+      amountUsed: totalAmount,
+    }));
 
-  // 💾 Sync to DB
-  axios.post(`${process.env.REACT_APP_API_URL}/api/sessions/update`, {
-    sessionId: sessionData.sessionId,
-    energyConsumed: deltaEnergy,
-    amountUsed: totalAmount,
-  }).catch((err) => console.error("❌ Session update failed:", err));
-  
-  // ⛔ Auto stop
-  if (amountPaid && totalAmount >= amountPaid && !autoStopped) {
-    stopCharging("auto");
-    setAutoStopped(true);
-  }
-}, [deltaEnergy, charging]);
+    axios.post(`${process.env.REACT_APP_API_URL}/api/sessions/update`, {
+      sessionId: sessionData.sessionId,
+      energyConsumed: energy,
+      amountUsed: totalAmount,
+    }).catch((err) => console.error("❌ Session update failed:", err));
+
+    if (amountPaid && totalAmount >= amountPaid && !autoStopped) {
+      console.log("⚠️ Auto-stopping due to ₹ limit...");
+      stopCharging("auto");
+      setAutoStopped(true);
+    }
+
+  }, 5000); // update every 5 seconds
+
+  return () => clearInterval(interval);
+}, [charging, startEnergy, currentEnergy, deltaEnergy]);
+
 
 
 
