@@ -50,10 +50,12 @@ const [deltaEnergy, setDeltaEnergy] = useState(0);         // Energy consumed in
         const token = localStorage.getItem("token");
         if (!token) return;
 
+const resolvedDeviceId = deviceId || localMeta.deviceId || sessionData.deviceId || "DEFAULT_DEVICE_ID";
 const response = await axios.get(
-  `${process.env.REACT_APP_API_URL}/api/sessions/active?deviceId=${deviceId || sessionData.deviceId}`,
+  `${process.env.REACT_APP_API_URL}/api/sessions/active?deviceId=${resolvedDeviceId}`,
   { headers: { Authorization: `Bearer ${token}` } }
 );
+
 
 
         if (response.data && response.data.sessionId) {
@@ -67,11 +69,21 @@ const response = await axios.get(
         console.warn("⚠️ No active session found. Proceeding to start a new session.");
       }
 
-const localSessionStarted = localStorage.getItem("sessionStarted") === "true";
-const effectiveTransactionId = transactionId || localMeta.transactionId;
-const effectiveAmountPaid = amountPaid || localMeta.amountPaid;
-const effectiveEnergySelected = energySelected || localMeta.energySelected;
+const metaFromStorage = JSON.parse(localStorage.getItem("sessionMeta") || "{}");
+console.log("🧠 Loaded sessionMeta:", metaFromStorage);
+
+const effectiveTransactionId = transactionId || metaFromStorage.transactionId;
+const effectiveAmountPaid = amountPaid || metaFromStorage.amountPaid;
+const effectiveEnergySelected = energySelected || metaFromStorage.energySelected;
+
+console.log("📦 Effective session params:", {
+  transactionId: effectiveTransactionId,
+  amountPaid: effectiveAmountPaid,
+  energySelected: effectiveEnergySelected
+});
+
 const effectiveDeviceId = deviceId || localMeta.deviceId;
+const localSessionStarted = localStorage.getItem("sessionStarted") === "true";
 
 if (effectiveTransactionId && effectiveDeviceId && !sessionStarted && !localSessionStarted) {
   await startSession(effectiveTransactionId, effectiveAmountPaid, effectiveEnergySelected);
@@ -218,11 +230,11 @@ if (!activeDeviceId || !txnId) {
 
     setSessionStarted(true);
     localStorage.setItem("sessionStarted", "true");
-    localStorage.setItem("sessionMeta", JSON.stringify({
-      transactionId: txnId,
-      amountPaid: paid,
-      energySelected: energy
-    }));
+localStorage.setItem("sessionMeta", JSON.stringify({
+  transactionId: txnId,
+  amountPaid: paid,
+  energySelected: energy
+}));
 
     await waitForMQTTConnection();
     startCharging();
