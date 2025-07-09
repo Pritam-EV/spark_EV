@@ -4,7 +4,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware"); // Authentication Middleware
 const mongoose = require("mongoose");
 const Device = require("../models/device"); // ⬅️ Add this at the top if not already
-
+const { endSession } = require("../controllers/sessionControllers");
 
 // ✅ Fetch session by Transaction ID (renamed to avoid route collision)
 router.get("/by-transaction/:transactionId", async (req, res) => {
@@ -291,5 +291,5 @@ router.get("/user-sessions", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
+router.post("/end", endSession);
 module.exports = router;
