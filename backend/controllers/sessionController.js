@@ -1,4 +1,4 @@
-const Session = require("../models/sessions");  // ✅ Import Session model
+const Session = require("../models/session");  // ✅ Import Session model
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");

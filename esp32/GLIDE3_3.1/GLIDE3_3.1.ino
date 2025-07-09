@@ -19,7 +19,7 @@ const char* mqtt_username = "pritam";
 const char* mqtt_password = "Pritam123";
 const int mqtt_port = 8883;
 const char* backendEndpoint = "https://spark-ev-backend.onrender.com/api/sessions/start";  // ✅ update this
-const char* backendUrl = "https://spark-ev-backend.onrender.com/api/sessions/end";
+const char* endSessionEndpoint  = "https://spark-ev-backend.onrender.com/api/sessions/end";
 
 // --- MQTT Topics ---
 const char* topicRelayControl = "GLIDE03/relay/set";   // used to receive ON/OFF command
