@@ -56,6 +56,7 @@ router.post("/start", authMiddleware, async (req, res) => {
     startDate,
     amountPaid,
     energySelected,
+    startEnergy, 
   } = req.body;
 
   const userId = req.user ? req.user.userId : null;
@@ -71,7 +72,8 @@ router.post("/start", authMiddleware, async (req, res) => {
       !startTime ||
       !userId ||
       !amountPaid ||
-      !energySelected
+      !energySelected ||
+      !startEnergy
     ) {
       console.error("❌ Missing required fields:", {
         sessionId,
@@ -82,6 +84,7 @@ router.post("/start", authMiddleware, async (req, res) => {
         userId,
         amountPaid,
         energySelected,
+        startEnergy,
       });
       return res.status(400).json({ error: "Missing required fields." });
     }
@@ -128,6 +131,7 @@ if (device.status === "occupied") {
       userId,
       amountPaid,
       energySelected,
+      startEnergy,
     });
 
 
