@@ -8,15 +8,15 @@ const MQTT_PASSWORD = "Pritam123";
 export default function useMQTTClient(deviceId, onMessage) {
   const clientRef = useRef(null);
   const [connected, setConnected] = useState(false);
-
+  const [mqttClient, setMqttClient] = useState(null);  // ✅ Reactive client
   useEffect(() => {
-    if (!deviceId) return;
+    if (!deviceId) return;  
 
     const topics = [
-      `${deviceId}/voltage`,
-      `${deviceId}/current`,
+      `${deviceId}/sensor/voltage`,
+      `${deviceId}/sensor/current`,
       `${deviceId}/relayState`,
-      `${deviceId}/energy`
+      `${deviceId}/sensor/energy`
     ];
 
 const client = mqtt.connect(MQTT_BROKER_URL, {
@@ -34,7 +34,7 @@ const client = mqtt.connect(MQTT_BROKER_URL, {
 
 
     clientRef.current = client;
-
+setMqttClient(client);  // ✅ make reactive
     const handleConnect = () => {
       console.log("✅ MQTT Connected");
       setConnected(true);
@@ -93,5 +93,6 @@ const client = mqtt.connect(MQTT_BROKER_URL, {
     }
   };
 
-  return { mqttClient: clientRef.current, connected, publish };
+return { mqttClient, connected, publish };
+
 }
