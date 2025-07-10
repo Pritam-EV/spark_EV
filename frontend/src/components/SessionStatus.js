@@ -204,9 +204,11 @@ function useEnergyMeter(
   amountPaid,
   energySelected,
   stopSession,
+  mqttClient,      // ✅ Add this
   publish,
   connected
-) {
+)
+{
   const [charging, setCharging] = React.useState(false);
   const [startEnergy, setStartEnergy] = React.useState(null);
   const [currentEnergy, setCurrentEnergy] = React.useState(null);
@@ -356,13 +358,24 @@ const {
 } = useSessionManager({ txnId, deviceId, amountPaid, energySelected, connected, publish });
 
 
-  const {
-    charging,
-    relayConfirmed,
-    deltaEnergy,
-    startCharging,
-    stopCharging,
-  } = useEnergyMeter(deviceId, updateSessionUsage, sessionStarted, amountPaid, energySelected, stopSession);
+const {
+  charging,
+  relayConfirmed,
+  deltaEnergy,
+  startCharging,
+  stopCharging,
+} = useEnergyMeter(
+  deviceId,
+  updateSessionUsage,
+  sessionStarted,
+  amountPaid,
+  energySelected,
+  stopSession,
+  mqttClient,   // ✅ Add this
+  publish,
+  connected
+);
+
 
   // Sync session with energy usage deltaEnergy & charging state
   React.useEffect(() => {
