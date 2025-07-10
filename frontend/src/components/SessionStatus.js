@@ -218,7 +218,7 @@ function useEnergyMeter(
   const [autoStopped, setAutoStopped] = React.useState(false);
 
   // --- Handle MQTT messages ---
-  const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
+
   const handleMQTTMessage = (topic, msg) => {
     const value = parseFloat(msg);
     if (isNaN(value)) return;
