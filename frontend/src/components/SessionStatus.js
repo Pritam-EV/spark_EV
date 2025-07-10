@@ -218,6 +218,7 @@ function useEnergyMeter(
   const [autoStopped, setAutoStopped] = React.useState(false);
 
   // --- Handle MQTT messages ---
+  const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
   const handleMQTTMessage = (topic, msg) => {
     const value = parseFloat(msg);
     if (isNaN(value)) return;
@@ -385,20 +386,15 @@ function useDragToStop(onStop) {
 // ------------- Main Component -----------------
 const SessionStatus = () => {
   
+  // 1. Get deviceId and other params first
+  const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
   const { transactionId: paramTxnId } = useParams();
   const location = useLocation();
 
-
-  // Meta params + fallback
-  const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
   const txnId = location.state?.transactionId || localMeta.transactionId || paramTxnId;
   const deviceId = location.state?.deviceId || localMeta.deviceId;
   const amountPaid = location.state?.amountPaid || localMeta.amountPaid;
   const energySelected = location.state?.energySelected || localMeta.energySelected;
-
-const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
-
-
 
 
 const {
