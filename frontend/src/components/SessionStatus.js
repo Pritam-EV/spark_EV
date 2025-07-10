@@ -210,6 +210,7 @@ function useEnergyMeter(
 )
 {
   const [charging, setCharging] = React.useState(false);
+  const [startEnergy, setStartEnergy] = React.useState(null);
   const [currentEnergy, setCurrentEnergy] = React.useState(null);
   const [deltaEnergy, setDeltaEnergy] = React.useState(0);
   const [relayConfirmed, setRelayConfirmed] = React.useState(false);
