@@ -105,7 +105,7 @@ float totalEnergy = 0.0;
 float energySelected = 0.0;
 bool sessionActive = false;
 uint32_t lastSessionTimestamp = 0;
-
+String deviceId = "GLIDE03";
 unsigned long lastEnergyUpdate = 0;
 
 // Session Tracking
@@ -813,7 +813,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   String topicStr = String(topic);
 
-  // 1. Handle sessionCommand topic
+  // --- 1. Unified Handler for /sessionCommand ---
   if (topicStr.endsWith("/sessionCommand")) {
     StaticJsonDocument<512> doc;
     DeserializationError error = deserializeJson(doc, msg);
@@ -823,7 +823,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
 
     String command = doc["command"] | "";
-    if (command != "start") return;
+    if (command != "start") {
+      Serial.println("⚠️ Unknown or unsupported command");
+      return;
+    }
 
     // Extract session data
     String sessionId = doc["sessionId"] | "";
@@ -834,7 +837,12 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     float amountPaid = doc["amountPaid"] | 0;
     String transactionId = doc["transactionId"] | "";
 
-    // Log to Serial
+    if (sessionId == "" || userId == "") {
+      Serial.println("❌ Invalid session data. Missing sessionId or userId.");
+      return;
+    }
+
+    // ✅ Log to Serial
     Serial.println("✅ Session Started:");
     Serial.println("Session ID: " + sessionId);
     Serial.println("User ID: " + userId);
@@ -846,42 +854,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     Serial.println(amountPaid);
     Serial.println("Transaction ID: " + transactionId);
 
-    // Save to EEPROM
+    // ✅ Save to EEPROM
     saveSessionToEEPROM(sessionId, userId, startTime, startDate, energySelected, amountPaid, transactionId);
 
-    // Turn on Relay
+    // ✅ Turn ON Relay
     client.publish((deviceId + "/relay/set").c_str(), "ON", true);
 
-    // Publish device state = Occupied
+    // ✅ Set device to Occupied
     client.publish((deviceId + "/state").c_str(), "Occupied", true);
   }
-}
-
-
-
-
-  // --- Session Command ---
-else if (strcmp(topic, topicSessionCommand) == 0) {
-  StaticJsonDocument<512> doc;
-  DeserializationError error = deserializeJson(doc, msg);
-  if (error) {
-    Serial.println("❌ Failed to parse JSON");
-    return;
-  }
-
-  String command = doc["command"] | "";
-  if (command == "start") {
-    String transactionId = doc["transactionId"] | "";
-    float energy = doc["energySelected"] | 0.0;
-    float amount = doc["amountPaid"] | 0.0;
-
-    if (transactionId != "" && energy > 0 && amount > 0) {
-    startNewSession(energy, amount, transactionId, sessionId);  // ✅ Fixed: 4 arguments
-
-    } else {
-      Serial.println("❌ Missing transactionId, energy, or amount");
-    }
-  }
-}
-
 }
