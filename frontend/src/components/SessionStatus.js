@@ -204,75 +204,92 @@ function useEnergyMeter(
   amountPaid,
   energySelected,
   stopSession,
-  mqttClient,      // ✅ Add this
+  mqttClient,
   publish,
   connected
-)
-{
+) {
   const [charging, setCharging] = React.useState(false);
+  const [relayConfirmed, setRelayConfirmed] = React.useState(false);
+  const [voltage, setVoltage] = React.useState(0);
+  const [current, setCurrent] = React.useState(0);
   const [startEnergy, setStartEnergy] = React.useState(null);
   const [currentEnergy, setCurrentEnergy] = React.useState(null);
   const [deltaEnergy, setDeltaEnergy] = React.useState(0);
-  const [relayConfirmed, setRelayConfirmed] = React.useState(false);
   const [autoStopped, setAutoStopped] = React.useState(false);
 
-
+  // --- Handle MQTT messages ---
   const handleMQTTMessage = (topic, msg) => {
-    const val = parseFloat(msg);
+    const value = parseFloat(msg);
+    if (isNaN(value)) return;
 
-    if (topic.endsWith("/energy")) {
-      setCurrentEnergy(val);
+    if (topic.endsWith("/voltage")) {
+      setVoltage(value);
+    } else if (topic.endsWith("/current")) {
+      setCurrent(value);
+    } else if (topic.endsWith("/energy")) {
+      setCurrentEnergy(value);
 
       if (startEnergy === null && charging) {
-        setStartEnergy(val);
-        localStorage.setItem(`startEnergy_${deviceId}`, val);
+        setStartEnergy(value);
+        localStorage.setItem(`startEnergy_${deviceId}`, value);
       }
 
       if (startEnergy !== null) {
-        setDeltaEnergy(parseFloat((val - startEnergy).toFixed(3)));
-      }
-    }
+        const delta = parseFloat((value - startEnergy).toFixed(3));
+        setDeltaEnergy(delta);
+        const usedAmount = parseFloat((delta * FIXED_RATE).toFixed(2));
 
-    if (topic.endsWith("/relay/state")) {
+        console.log("📊 Live Reading:", {
+          voltage,
+          current,
+          startEnergy,
+          currentEnergy: value,
+          deltaEnergy: delta,
+          amountUsed: usedAmount,
+        });
+
+        onUpdateSessionUsage(delta, usedAmount);
+
+        if (!autoStopped && amountPaid && usedAmount >= amountPaid) {
+          stopSession("auto");
+          setAutoStopped(true);
+        }
+      }
+    } else if (topic.endsWith("/relay/state")) {
       const isOn = msg === "ON";
       setCharging(isOn);
       setRelayConfirmed(isOn);
-      if (isOn && startEnergy === null && currentEnergy !== null) {
-        setStartEnergy(currentEnergy);
-      }
     }
   };
 
-  // Periodic usage updates
+  // --- Subscribe to MQTT topics ---
   React.useEffect(() => {
-    if (!charging || startEnergy === null || currentEnergy === null) return;
+    if (!mqttClient || !connected || !deviceId) return;
 
-    const interval = setInterval(() => {
-      const delta = parseFloat((currentEnergy - startEnergy).toFixed(3));
-      const usedAmount = parseFloat((delta * FIXED_RATE).toFixed(2));
+    mqttClient.on("message", handleMQTTMessage);
+    mqttClient.subscribe(`${deviceId}/voltage`);
+    mqttClient.subscribe(`${deviceId}/current`);
+    mqttClient.subscribe(`${deviceId}/energy`);
+    mqttClient.subscribe(`${deviceId}/relay/state`);
 
-      setDeltaEnergy(delta);
-      onUpdateSessionUsage(delta, usedAmount);
+    return () => {
+      mqttClient.removeListener("message", handleMQTTMessage);
+      mqttClient.unsubscribe(`${deviceId}/voltage`);
+      mqttClient.unsubscribe(`${deviceId}/current`);
+      mqttClient.unsubscribe(`${deviceId}/energy`);
+      mqttClient.unsubscribe(`${deviceId}/relay/state`);
+    };
+  }, [mqttClient, connected, deviceId, startEnergy]);
 
-      if (!autoStopped && amountPaid && usedAmount >= amountPaid) {
-        stopSession("auto");
-        setAutoStopped(true);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [charging, startEnergy, currentEnergy]);
-
-  // Start charging by publishing MQTT ON
+  // --- Start Charging ---
   const startCharging = React.useCallback(() => {
     if (connected && mqttClient && deviceId) {
       publish(`${deviceId}/relay/set`, "ON");
       setCharging(true);
-      if (startEnergy === null && currentEnergy !== null) setStartEnergy(currentEnergy);
     }
-  }, [connected, mqttClient, deviceId, currentEnergy, startEnergy]);
+  }, [connected, mqttClient, deviceId]);
 
-  // Stop charging by publishing MQTT OFF
+  // --- Stop Charging ---
   const stopCharging = React.useCallback(() => {
     if (connected && mqttClient && deviceId) {
       publish(`${deviceId}/relay/set`, "OFF");
@@ -285,11 +302,14 @@ function useEnergyMeter(
     charging,
     relayConfirmed,
     deltaEnergy,
+    voltage,
+    current,
     startCharging,
     stopCharging,
     connected,
   };
 }
+
 
 // ----------- useDragToStop Hook --------------
 function useDragToStop(onStop) {
@@ -362,9 +382,12 @@ const {
   charging,
   relayConfirmed,
   deltaEnergy,
+  voltage,
+  current,
   startCharging,
   stopCharging,
 } = useEnergyMeter(
+
   deviceId,
   updateSessionUsage,
   sessionStarted,
@@ -491,14 +514,15 @@ React.useEffect(() => {
       </div>
 
       <div className="live-data">
-        <div className="live-value">
-          <p className="large-text">{session.voltage ?? 0} V</p>
-          <p className="small-text">Voltage</p>
-        </div>
-        <div className="live-value">
-          <p className="large-text">{session.current ?? 0} A</p>
-          <p className="small-text">Current</p>
-        </div>
+<div className="live-value">
+  <p className="large-text">{voltage ?? 0} V</p>
+  <p className="small-text">Voltage</p>
+</div>
+<div className="live-value">
+  <p className="large-text">{current ?? 0} A</p>
+  <p className="small-text">Current</p>
+</div>
+
         <div className="live-value">
           <p className="large-text">{(session.energyConsumed ?? deltaEnergy).toFixed(3)} kWh</p>
           <p className="small-text">Energy Used</p>
