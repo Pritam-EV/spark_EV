@@ -336,7 +336,6 @@ React.useEffect(() => {
     current,
     startCharging,
     stopCharging,
-    connected,
     handleMQTTMessage,
   };
 }
@@ -385,7 +384,15 @@ function useDragToStop(onStop) {
 
 // ------------- Main Component -----------------
 const SessionStatus = () => {
-  
+  // 1. Define the MQTT message handler to pass into the hook
+const handleMQTTMessage = (topic, msg) => {
+  // You can log or add filtering here if needed
+  console.log("🔔 MQTT Received:", topic, msg);
+};
+
+// 2. Use MQTT hook — 🔥 this gives you the 3 variables you need
+const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
+
   // 1. Get deviceId and other params first
   const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
   const { transactionId: paramTxnId } = useParams();
@@ -406,28 +413,26 @@ const {
   updateSessionUsage,
 } = useSessionManager({ txnId, deviceId, amountPaid, energySelected, connected, publish });
 
-
 const {
- charging,
+  charging,
   relayConfirmed,
   deltaEnergy,
   voltage,
   current,
   startCharging,
   stopCharging,
-  handleMQTTMessage,
 } = useEnergyMeter(
-
   deviceId,
   updateSessionUsage,
   sessionStarted,
   amountPaid,
   energySelected,
   stopSession,
-  mqttClient,   // ✅ Add this
+  mqttClient,
   publish,
   connected
 );
+
 
 
   // Sync session with energy usage deltaEnergy & charging state
