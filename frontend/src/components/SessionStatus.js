@@ -222,11 +222,11 @@ function useEnergyMeter(
     const value = parseFloat(msg);
     if (isNaN(value)) return;
 
-    if (topic.endsWith("/voltage")) {
+    if (topic.endsWith("/sensor/voltage")) {
       setVoltage(value);
-    } else if (topic.endsWith("/current")) {
+    } else if (topic.endsWith("/sensor/current")) {
       setCurrent(value);
-    } else if (topic.endsWith("/energy")) {
+    } else if (topic.endsWith("/sensor/energy")) {
       setCurrentEnergy(value);
 
       if (startEnergy === null && charging) {
@@ -267,16 +267,16 @@ function useEnergyMeter(
     if (!mqttClient || !connected || !deviceId) return;
 
     mqttClient.on("message", handleMQTTMessage);
-    mqttClient.subscribe(`${deviceId}/voltage`);
-    mqttClient.subscribe(`${deviceId}/current`);
-    mqttClient.subscribe(`${deviceId}/energy`);
+    mqttClient.subscribe(`${deviceId}/sensor/voltage`);
+    mqttClient.subscribe(`${deviceId}/sensor/current`);
+    mqttClient.subscribe(`${deviceId}/sensor/energy`);
     mqttClient.subscribe(`${deviceId}/relay/state`);
 
     return () => {
       mqttClient.removeListener("message", handleMQTTMessage);
-      mqttClient.unsubscribe(`${deviceId}/voltage`);
-      mqttClient.unsubscribe(`${deviceId}/current`);
-      mqttClient.unsubscribe(`${deviceId}/energy`);
+      mqttClient.unsubscribe(`${deviceId}/sensor/voltage`);
+      mqttClient.unsubscribe(`${deviceId}/sensor/current`);
+      mqttClient.unsubscribe(`${deviceId}/sensor/energy`);
       mqttClient.unsubscribe(`${deviceId}/relay/state`);
     };
   }, [mqttClient, connected, deviceId, startEnergy]);
@@ -365,7 +365,43 @@ const SessionStatus = () => {
   const amountPaid = location.state?.amountPaid || localMeta.amountPaid;
   const energySelected = location.state?.energySelected || localMeta.energySelected;
 
-const { mqttClient, connected, publish } = useMQTTClient(deviceId);
+const handleMQTTMessage = (topic, msg) => {
+  const val = parseFloat(msg);
+
+  if (topic.endsWith("/sensor/voltage")) {
+    console.log("📡 Voltage Received:", val);
+    setSession((prev) => ({ ...prev, voltage: val }));
+  }
+
+  if (topic.endsWith("/sensor/current")) {
+    console.log("📡 Current Received:", val);
+    setSession((prev) => ({ ...prev, current: val }));
+  }
+
+  if (topic.endsWith("/sensor/energy")) {
+    console.log("📡 Energy Received:", val);
+    setCurrentEnergy(val);
+
+    if (startEnergy === null && charging) {
+      setStartEnergy(val);
+      localStorage.setItem(`startEnergy_${deviceId}`, val);
+    }
+
+    if (startEnergy !== null) {
+      const delta = parseFloat((val - startEnergy).toFixed(3));
+      setDeltaEnergy(delta);
+    }
+  }
+
+  if (topic.endsWith("/relayState")) {
+    const isOn = msg === "ON";
+    setCharging(isOn);
+    setRelayConfirmed(isOn);
+  }
+};
+
+const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
+
 
 
 const {
@@ -443,9 +479,9 @@ React.useEffect(() => {
     setSession((prev) => {
       const updated = { ...prev };
 
-      if (topic.endsWith("/voltage")) updated.voltage = value;
-      else if (topic.endsWith("/current")) updated.current = value;
-      else if (topic.endsWith("/energy")) {
+      if (topic.endsWith("/sensor/voltage")) updated.voltage = value;
+      else if (topic.endsWith("/sensor/current")) updated.current = value;
+      else if (topic.endsWith("/sensor/energy")) {
         updated.currentEnergy = value;
         if (!prev.startEnergy) {
           updated.startEnergy = value;
@@ -460,15 +496,15 @@ React.useEffect(() => {
   };
 
   mqttClient.on("message", handleMessage);
-  mqttClient.subscribe(`${deviceId}/voltage`);
-  mqttClient.subscribe(`${deviceId}/current`);
-  mqttClient.subscribe(`${deviceId}/energy`);
+  mqttClient.subscribe(`${deviceId}/vsensor/oltage`);
+  mqttClient.subscribe(`${deviceId}/sensor/current`);
+  mqttClient.subscribe(`${deviceId}/sensor/energy`);
 
   return () => {
     mqttClient.removeListener("message", handleMessage);
-    mqttClient.unsubscribe(`${deviceId}/voltage`);
-    mqttClient.unsubscribe(`${deviceId}/current`);
-    mqttClient.unsubscribe(`${deviceId}/energy`);
+    mqttClient.unsubscribe(`${deviceId}/sensor/voltage`);
+    mqttClient.unsubscribe(`${deviceId}/sensor/current`);
+    mqttClient.unsubscribe(`${deviceId}/sensor/energy`);
   };
 }, [mqttClient, connected, deviceId]);
 
