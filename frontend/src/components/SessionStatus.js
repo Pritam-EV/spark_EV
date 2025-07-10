@@ -387,7 +387,7 @@ const SessionStatus = () => {
   
   const { transactionId: paramTxnId } = useParams();
   const location = useLocation();
-const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
+
 
   // Meta params + fallback
   const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
@@ -396,7 +396,7 @@ const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMes
   const amountPaid = location.state?.amountPaid || localMeta.amountPaid;
   const energySelected = location.state?.energySelected || localMeta.energySelected;
 
-
+const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
 
 
 
