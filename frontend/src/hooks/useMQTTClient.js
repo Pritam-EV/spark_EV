@@ -1,5 +1,3 @@
-// src/hooks/useMQTTClient.js
-
 import { useEffect, useRef, useState } from "react";
 import mqtt from "mqtt";
 
@@ -14,29 +12,40 @@ export default function useMQTTClient(deviceId, onMessage) {
   useEffect(() => {
     if (!deviceId) return;
 
-    const voltageTopic = `${deviceId}/voltage`;
-    const currentTopic = `${deviceId}/current`;
-    const relayTopic = `${deviceId}/relayState`;
-    const energyTopic = `${deviceId}/energy`;  // Add this line
+    const topics = [
+      `${deviceId}/voltage`,
+      `${deviceId}/current`,
+      `${deviceId}/relayState`,
+      `${deviceId}/energy`
+    ];
 
-    const client = mqtt.connect(MQTT_BROKER_URL, {
-      username: MQTT_USER,
-      password: MQTT_PASSWORD,
-      rejectUnauthorized: false,
-      reconnectPeriod: 2000,
-    });
+const client = mqtt.connect(MQTT_BROKER_URL, {
+  clientId: `webclient_${Math.random().toString(16).substr(2, 8)}`,
+  username: MQTT_USER,
+  password: MQTT_PASSWORD,
+  protocolId: 'MQTT',
+  protocolVersion: 4,
+  rejectUnauthorized: false,
+  reconnectPeriod: 1000,
+  connectTimeout: 5000,
+  clean: true,
+});
+
+
 
     clientRef.current = client;
 
     const handleConnect = () => {
       console.log("✅ MQTT Connected");
       setConnected(true);
-      client.subscribe([voltageTopic, currentTopic, relayTopic, energyTopic]);
+      client.subscribe(topics, (err) => {
+        if (err) console.error("❌ MQTT subscribe error:", err);
+      });
     };
 
     const handleMessage = (topic, message) => {
-      const value = parseFloat(message.toString());
-      onMessage(topic, value);
+      const msgStr = message.toString();
+      if (onMessage) onMessage(topic, msgStr);
     };
 
     const handleError = (err) => {
@@ -48,16 +57,21 @@ export default function useMQTTClient(deviceId, onMessage) {
       setConnected(false);
     };
 
-    client.on("connect", handleConnect);
-client.on("message", (topic, message) => {
-  const value = message.toString(); // or parseFloat if needed
-  if (onMessage) {
-    onMessage(topic, value);
-  }
-});
+    const handleReconnect = () => {
+      console.log("🔄 MQTT Reconnecting...");
+    };
 
+    const handleOffline = () => {
+      console.log("⚠️ MQTT Offline");
+      setConnected(false);
+    };
+
+    client.on("connect", handleConnect);
+    client.on("message", handleMessage);
     client.on("error", handleError);
     client.on("close", handleClose);
+    client.on("reconnect", handleReconnect);
+    client.on("offline", handleOffline);
 
     return () => {
       console.log("🧹 Cleaning up MQTT client...");
@@ -65,6 +79,8 @@ client.on("message", (topic, message) => {
       client.removeListener("message", handleMessage);
       client.removeListener("error", handleError);
       client.removeListener("close", handleClose);
+      client.removeListener("reconnect", handleReconnect);
+      client.removeListener("offline", handleOffline);
       client.end(true);
     };
   }, [deviceId]);

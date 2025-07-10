@@ -6,7 +6,7 @@ const sessionSchema = new mongoose.Schema({
   transactionId: { type: String, required: true, unique: true },
   startTime: { type: Date, required: true },
   startDate: { type: String, required: true },
-  startEnergy: { type: Number, required: true },  // New
+  startEnergy: { type: Number, required: false },  // New
   endEnergy: { type: Number, default: null },     // New
   energySelected: { type: Number, required: true },
   energyConsumed: { type: Number, default: 0 },

@@ -19,14 +19,13 @@ const startSession = async (req, res) => {
       transactionId,
       startTime,
       startDate,
-      startEnergy,
       energySelected,
       amountPaid,
       userId, // optional
     } = req.body;
 
     // ✅ Validate required fields
-    if (!sessionId || !deviceId || !transactionId || !startTime || !startDate || startEnergy === undefined || energySelected === undefined || amountPaid === undefined) {
+    if (!sessionId || !deviceId || !transactionId || !startTime || !startDate  || energySelected === undefined || amountPaid === undefined) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -42,7 +41,6 @@ const startSession = async (req, res) => {
       transactionId,
       startTime: new Date(startTime),
       startDate,
-      startEnergy,
       energySelected,
       amountPaid,
       userId: userId || null, // Optional (null if not passed)

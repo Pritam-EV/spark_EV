@@ -26,6 +26,7 @@ function ChargingOptions() {
     const [estimatedEnergy, setEstimatedEnergy] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+const deviceId = device_id;
 
 
     const navigate = useNavigate();
@@ -105,15 +106,20 @@ useEffect(() => {
                             amountPaid: estimatedCost,
                             chargingOption: selectedOption,
                             energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
+                            
                         },
+                        
                     });
+                    console.log("🔍 Params:", { transactionId , deviceId  });
                 },
                 prefill: {
                     name: "User Name",
                     email: "user@example.com",
                     contact: "1234567890",
                 },
+                
             };
+
 
             const razorpay = new window.Razorpay(options);
             razorpay.open();
