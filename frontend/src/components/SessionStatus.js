@@ -233,7 +233,7 @@ function useEnergyMeter(
       }
     }
 
-    if (topic.endsWith("/relayState")) {
+    if (topic.endsWith("/relay/state")) {
       const isOn = msg === "ON";
       setCharging(isOn);
       setRelayConfirmed(isOn);
@@ -266,7 +266,7 @@ function useEnergyMeter(
   // Start charging by publishing MQTT ON
   const startCharging = React.useCallback(() => {
     if (connected && mqttClient && deviceId) {
-      publish(`${deviceId}/relayState`, "ON");
+      publish(`${deviceId}/relay/set`, "ON");
       setCharging(true);
       if (startEnergy === null && currentEnergy !== null) setStartEnergy(currentEnergy);
     }
@@ -275,7 +275,7 @@ function useEnergyMeter(
   // Stop charging by publishing MQTT OFF
   const stopCharging = React.useCallback(() => {
     if (connected && mqttClient && deviceId) {
-      publish(`${deviceId}/relayState`, "OFF");
+      publish(`${deviceId}/relay/set`, "OFF");
       setCharging(false);
       setRelayConfirmed(false);
     }
