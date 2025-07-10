@@ -77,7 +77,7 @@ PZEM004Tv30 pzem(Serial2, PZEM_RX_PIN, PZEM_TX_PIN);
 const int relayPin = 12;
 bool relayState = false;
 
-#define EEPROM_SIZE 64
+#define EEPROM_SIZE 512
 #define ADDR_RELAY_STATE    0
 #define ADDR_TOTAL_ENERGY   4
 #define ADDR_ENERGY     0     // float, 4 bytes
@@ -127,6 +127,49 @@ unsigned long lastMqttPublish = 0;
 const unsigned long ENERGY_CHECK_INTERVAL = 1000; // 1 sec
 const unsigned long MQTT_PUBLISH_INTERVAL = 5000; // 5 sec
 
+
+void saveSessionToEEPROM(String sessionId, String userId, String startTime, String startDate, float energySelected, float amountPaid, String txnId) {
+  StaticJsonDocument<384> doc;
+  doc["sessionId"] = sessionId;
+  doc["userId"] = userId;
+  doc["startTime"] = startTime;
+  doc["startDate"] = startDate;
+  doc["energySelected"] = energySelected;
+  doc["amountPaid"] = amountPaid;
+  doc["transactionId"] = txnId;
+
+  char jsonBuffer[384];
+  serializeJson(doc, jsonBuffer);
+
+  EEPROM.begin(EEPROM_SIZE);
+  for (int i = 0; i < EEPROM_SIZE; i++) EEPROM.write(i, 0); // clear
+  for (unsigned int i = 0; i < strlen(jsonBuffer); i++) EEPROM.write(i, jsonBuffer[i]);
+  EEPROM.commit();
+
+  Serial.println("📦 Session saved to EEPROM");
+}
+
+bool loadSessionFromEEPROM(JsonDocument &doc) {
+  EEPROM.begin(EEPROM_SIZE);
+  String jsonStr = "";
+  for (int i = 0; i < EEPROM_SIZE; i++) {
+    char c = EEPROM.read(i);
+    if (c == '\0') break;
+    jsonStr += c;
+  }
+
+  if (jsonStr.length() == 0) return false;
+
+  DeserializationError error = deserializeJson(doc, jsonStr);
+  if (error) {
+    Serial.println("⚠️ Failed to restore session from EEPROM");
+    return false;
+  }
+
+  Serial.println("🔁 Restored session from EEPROM:");
+  serializeJsonPretty(doc, Serial);
+  return true;
+}
 
 
 // --- Function Prototypes ---
@@ -278,7 +321,7 @@ if (buttonPressed && !emergencyToggled && (millis() - buttonPressStartTime >= 20
     relayState = false;
     digitalWrite(RELAY_PIN, LOW);
     saveRelayStateToEEPROM();
-    client.publish((String(DEVICE_ID) + "/relayState").c_str(), "OFF", true);
+    client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "OFF", true);
     client.publish((String(DEVICE_ID) + "/alerts").c_str(), "🛑 Emergency Stop Activated");
     Serial.println("🛑 Emergency Button Held: Relay OFF Immediately");
   } else if (lastRelayStateBeforeEmergency) {
@@ -286,7 +329,7 @@ if (buttonPressed && !emergencyToggled && (millis() - buttonPressStartTime >= 20
     relayState = true;
     digitalWrite(RELAY_PIN, HIGH);
     saveRelayStateToEEPROM();
-    client.publish((String(DEVICE_ID) + "/relayState").c_str(), "ON", true);
+    client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "ON", true);
     client.publish((String(DEVICE_ID) + "/alerts").c_str(), "✅ Relay Restored After Emergency");
     Serial.println("✅ Emergency Reset: Relay Restored");
   }
@@ -416,7 +459,7 @@ Serial.printf("🚀 New session started: ID=%s, StartEnergy=%.3f kWh\n", session
   serializeJson(doc, log);
   client.publish("GLIDE03/session/logs", log.c_str());
 
-  client.publish((String(DEVICE_ID) + "/relayState").c_str(), "ON", true);
+  client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "ON", true);
   client.publish((String(DEVICE_ID) + "/status/device").c_str(), "Occupied", true);
 }
 
@@ -644,7 +687,7 @@ void startSession(float selectedEnergy) {
   relayState = true;
   digitalWrite(RELAY_PIN, HIGH);
   saveSessionToEEPROM();
-client.publish((String(DEVICE_ID) + "/relayState").c_str(), "ON", true);
+client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "ON", true);
 client.publish((String(DEVICE_ID) + "/status/device").c_str(), "Occupied", true);
 }
 
@@ -655,7 +698,7 @@ void stopSession(bool isEmergency) {
   digitalWrite(RELAY_PIN, LOW);
   saveSessionToEEPROM();
 
-  client.publish((String(DEVICE_ID) + "/relayState").c_str(), "OFF", true);
+  client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "OFF", true);
   client.publish((String(DEVICE_ID) + "/status/device").c_str(), "Available", true);
 
   if (isEmergency) {
@@ -678,7 +721,7 @@ void readRelayStateFromEEPROM() {
   digitalWrite(relayPin, relayState ? HIGH : LOW);
 }
 
-void saveSessionToEEPROM() {
+void saveSessionToEEPROM() {  
   EEPROM.put(ADDR_ENERGY, totalEnergy);
   EEPROM.put(ADDR_ENERGY_SEL, energySelected);
   EEPROM.write(ADDR_RELAY, relayState);
@@ -757,40 +800,63 @@ client.publish((String(DEVICE_ID) + "/status/device").c_str(), relayState ? "Occ
 
 
 
-void mqttCallback(char *topic, byte *payload, unsigned int length) {
-  Serial.print("🧭 Received topic: ");
-  Serial.println(topic);
-  Serial.print("📩 Payload: ");
-
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String msg;
   for (int i = 0; i < length; i++) {
     msg += (char)payload[i];
   }
 
+  Serial.print("📥 MQTT Received [");
+  Serial.print(topic);
+  Serial.print("]: ");
   Serial.println(msg);
 
-  // --- Relay Control ---
-if (strcmp(topic, topicRelayControl) == 0) {
-  Serial.println("🧭 Received topic: " + String(topic));
-  Serial.println("📩 Payload: " + msg);
+  String topicStr = String(topic);
 
-  if (msg == "ON") {
-    digitalWrite(RELAY_PIN, HIGH);
-    relayState = true;
-    Serial.println("🔌 Relay turned ON via MQTT");
-    client.publish(topicRelayStatus, "ON", true);
-    saveRelayStateToEEPROM();
-  } else if (msg == "OFF") {
-    stopSession(false);
-    digitalWrite(RELAY_PIN, LOW);
-    relayState = false;
-    Serial.println("🔌 Relay turned OFF via MQTT");
-    client.publish(topicRelayStatus, "OFF", true);
-    saveRelayStateToEEPROM();
-  } else {
-    Serial.println("⚠️ Invalid command");
+  // 1. Handle sessionCommand topic
+  if (topicStr.endsWith("/sessionCommand")) {
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, msg);
+    if (error) {
+      Serial.println("❌ Failed to parse sessionCommand JSON");
+      return;
+    }
+
+    String command = doc["command"] | "";
+    if (command != "start") return;
+
+    // Extract session data
+    String sessionId = doc["sessionId"] | "";
+    String userId = doc["userId"] | "";
+    String startTime = doc["startTime"] | "";
+    String startDate = doc["startDate"] | "";
+    float energySelected = doc["energySelected"] | 0;
+    float amountPaid = doc["amountPaid"] | 0;
+    String transactionId = doc["transactionId"] | "";
+
+    // Log to Serial
+    Serial.println("✅ Session Started:");
+    Serial.println("Session ID: " + sessionId);
+    Serial.println("User ID: " + userId);
+    Serial.println("Start Time: " + startTime);
+    Serial.println("Start Date: " + startDate);
+    Serial.print("Energy Selected: ");
+    Serial.println(energySelected);
+    Serial.print("Amount Paid: ");
+    Serial.println(amountPaid);
+    Serial.println("Transaction ID: " + transactionId);
+
+    // Save to EEPROM
+    saveSessionToEEPROM(sessionId, userId, startTime, startDate, energySelected, amountPaid, transactionId);
+
+    // Turn on Relay
+    client.publish((deviceId + "/relay/set").c_str(), "ON", true);
+
+    // Publish device state = Occupied
+    client.publish((deviceId + "/state").c_str(), "Occupied", true);
   }
 }
+
 
 
 

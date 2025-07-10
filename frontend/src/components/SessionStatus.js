@@ -98,12 +98,35 @@ const res = await axios.post(
         "sessionMeta",
         JSON.stringify({ transactionId: txnId, deviceId, amountPaid, energySelected })
       );
+
+ // ✅ Publish MQTT session start command to ESP32
+    publish(`${deviceId}/sessionCommand`, JSON.stringify({
+      command: "start",
+      sessionId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId: txnId
+    }));
+
+
     } catch (err) {
       console.error("❌ Failed to start session:", err.message);
     }
   };
 
-
+    console.log("🚀 Published sessionCommand to ESP32:", {
+      command: "start",
+      sessionId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId: txnId
+    });
 
 
   // Stop current session
