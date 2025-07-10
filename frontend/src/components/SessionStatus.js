@@ -210,7 +210,6 @@ function useEnergyMeter(
 )
 {
   const [charging, setCharging] = React.useState(false);
-  const [startEnergy, setStartEnergy] = React.useState(null);
   const [currentEnergy, setCurrentEnergy] = React.useState(null);
   const [deltaEnergy, setDeltaEnergy] = React.useState(0);
   const [relayConfirmed, setRelayConfirmed] = React.useState(false);
@@ -408,6 +407,48 @@ const {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [charging]);
+
+// Listen to live MQTT messages from ESP32
+React.useEffect(() => {
+  if (!mqttClient || !connected || !deviceId) return;
+
+  const handleMessage = (topic, message) => {
+    const value = parseFloat(message);
+    if (isNaN(value)) return;
+
+    setSession((prev) => {
+      const updated = { ...prev };
+
+      if (topic.endsWith("/voltage")) updated.voltage = value;
+      else if (topic.endsWith("/current")) updated.current = value;
+      else if (topic.endsWith("/energy")) {
+        updated.currentEnergy = value;
+        if (!prev.startEnergy) {
+          updated.startEnergy = value;
+          localStorage.setItem(`startEnergy_${deviceId}`, value);
+        }
+        updated.energyConsumed = parseFloat((value - updated.startEnergy).toFixed(3));
+        updated.amountUsed = parseFloat((updated.energyConsumed * FIXED_RATE).toFixed(2));
+      }
+
+      return updated;
+    });
+  };
+
+  mqttClient.on("message", handleMessage);
+  mqttClient.subscribe(`${deviceId}/voltage`);
+  mqttClient.subscribe(`${deviceId}/current`);
+  mqttClient.subscribe(`${deviceId}/energy`);
+
+  return () => {
+    mqttClient.removeListener("message", handleMessage);
+    mqttClient.unsubscribe(`${deviceId}/voltage`);
+    mqttClient.unsubscribe(`${deviceId}/current`);
+    mqttClient.unsubscribe(`${deviceId}/energy`);
+  };
+}, [mqttClient, connected, deviceId]);
+
+
 
   const { dragging, setDragging, thumbLeft } = useDragToStop(() => {
     stopCharging();

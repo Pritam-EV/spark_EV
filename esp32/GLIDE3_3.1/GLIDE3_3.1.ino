@@ -798,8 +798,6 @@ client.publish((String(DEVICE_ID) + "/status/device").c_str(), relayState ? "Occ
   }
 }
 
-
-
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String msg;
   for (int i = 0; i < length; i++) {
@@ -813,7 +811,27 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   String topicStr = String(topic);
 
-  // --- 1. Unified Handler for /sessionCommand ---
+  // --- Handle relay/set command ---
+  if (topicStr.endsWith("/relay/set")) {
+    if (msg == "ON") {
+      relayState = true;
+      digitalWrite(RELAY_PIN, HIGH);
+      client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "ON", true);
+      client.publish((String(DEVICE_ID) + "/status/device").c_str(), "Occupied", true);
+      saveRelayStateToEEPROM();
+      Serial.println("✅ Relay turned ON via MQTT");
+    } else if (msg == "OFF") {
+      relayState = false;
+      digitalWrite(RELAY_PIN, LOW);
+      client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "OFF", true);
+      client.publish((String(DEVICE_ID) + "/status/device").c_str(), "Available", true);
+      saveRelayStateToEEPROM();
+      Serial.println("🛑 Relay turned OFF via MQTT");
+    }
+    return;
+  }
+
+  // --- Handle sessionCommand (start session) ---
   if (topicStr.endsWith("/sessionCommand")) {
     StaticJsonDocument<512> doc;
     DeserializationError error = deserializeJson(doc, msg);
@@ -829,11 +847,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
 
     // Extract session data
-    String sessionId = doc["sessionId"] | "";
+    sessionId = doc["sessionId"] | "";
     String userId = doc["userId"] | "";
     String startTime = doc["startTime"] | "";
     String startDate = doc["startDate"] | "";
-    float energySelected = doc["energySelected"] | 0;
+    energySelected = doc["energySelected"] | 0;
     float amountPaid = doc["amountPaid"] | 0;
     String transactionId = doc["transactionId"] | "";
 
@@ -842,25 +860,25 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
       return;
     }
 
-    // ✅ Log to Serial
-    Serial.println("✅ Session Started:");
+    Serial.println("✅ Starting new charging session:");
     Serial.println("Session ID: " + sessionId);
     Serial.println("User ID: " + userId);
-    Serial.println("Start Time: " + startTime);
-    Serial.println("Start Date: " + startDate);
-    Serial.print("Energy Selected: ");
-    Serial.println(energySelected);
-    Serial.print("Amount Paid: ");
-    Serial.println(amountPaid);
     Serial.println("Transaction ID: " + transactionId);
+    Serial.println("Start Time: " + startTime);
+    Serial.println("Energy Selected: " + String(energySelected) + " kWh");
+    Serial.println("Amount Paid: ₹" + String(amountPaid));
 
-    // ✅ Save to EEPROM
+    startEnergy = pzem.energy();
+    sessionStartEnergy = startEnergy;
+    sessionActive = true;
+    relayState = true;
+
+    digitalWrite(RELAY_PIN, HIGH);
     saveSessionToEEPROM(sessionId, userId, startTime, startDate, energySelected, amountPaid, transactionId);
 
-    // ✅ Turn ON Relay
-    client.publish((deviceId + "/relay/set").c_str(), "ON", true);
-
-    // ✅ Set device to Occupied
-    client.publish((deviceId + "/state").c_str(), "Occupied", true);
+    // Publish MQTT confirmations
+    client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "ON", true);
+    client.publish((String(DEVICE_ID) + "/status/device").c_str(), "Occupied", true);
+    Serial.println("⚡ Relay turned ON. Session marked active.");
   }
 }
