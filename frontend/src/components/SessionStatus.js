@@ -8,22 +8,26 @@ import useMQTTClient from "../hooks/useMQTTClient";
 // Constants
 const FIXED_RATE = 20; // ₹ per kWh
 
-// 🧠 ------------------ Session Manager ------------------
+// ----------- useSessionManager Hook --------------
 function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connected, publish }) {
+
   const navigate = useNavigate();
-  const [session, setSession] = useState(() =>
+  const [session, setSession] = React.useState(() =>
     JSON.parse(localStorage.getItem("activeSession")) || {}
   );
-  const [sessionStarted, setSessionStarted] = useState(!!session.sessionId);
+  const [sessionStarted, setSessionStarted] = React.useState(!!session.sessionId);
 
-  useEffect(() => {
+  // Load active session or start new session if none
+  React.useEffect(() => {
     const loadOrStartSession = async () => {
+      
       if (sessionStarted) return;
 
       try {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("No auth token");
 
+        // Check active session from backend
         const res = await axios.get(
           `${process.env.REACT_APP_API_URL}/api/sessions/active?deviceId=${deviceId}`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -36,7 +40,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
           return;
         }
       } catch (err) {
-        // Proceed to start new
+        // No active session or error - proceed to start new
       }
 
       if (txnId && deviceId) {
@@ -47,66 +51,102 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
     loadOrStartSession();
   }, [txnId, deviceId, amountPaid, energySelected, sessionStarted]);
 
+  // Start a new session
   const startSession = async (txnId, amountPaid, energySelected) => {
     try {
       const token = localStorage.getItem("token");
+      if (!token) throw new Error("No auth token");
+
       const now = new Date();
       const sessionId = "session_" + now.getTime();
       const startTime = now.toISOString();
       const startDate = startTime.split("T")[0];
-      const user = JSON.parse(localStorage.getItem("user"));
-      const userId = user?._id || user?.id;
+      const user = JSON.parse(localStorage.getItem("user")); // assume user is stored after login
       const startEnergyRaw = localStorage.getItem(`startEnergy_${deviceId}`);
       const startEnergy = startEnergyRaw !== null ? parseFloat(startEnergyRaw) : null;
+      const userId = user?._id || user?.id;
 
-      const res = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/sessions/start`,
-        {
-          sessionId,
-          userId,
-          deviceId,
-          transactionId: txnId,
-          startTime,
-          startDate,
-          amountPaid,
-          energySelected,
-          startEnergy,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+console.log("🧪 Starting session with:", {
+  sessionId,
+  userId,
+  deviceId,
+  transactionId: txnId,
+  startTime,
+  startDate,
+  amountPaid,
+  energySelected,
+});
+
+const res = await axios.post(
+  `${process.env.REACT_APP_API_URL}/api/sessions/start`,
+  {
+    sessionId,
+    userId,
+    deviceId,
+    transactionId: txnId,
+    startTime,
+    startDate,
+    amountPaid,
+    energySelected,
+    startEnergy,
+  },
+  { headers: { Authorization: `Bearer ${token}` } }
+);
 
       const newSession = { ...res.data, startTime, startDate };
       setSession(newSession);
       setSessionStarted(true);
       localStorage.setItem("activeSession", JSON.stringify(newSession));
-      localStorage.setItem("sessionMeta", JSON.stringify({ transactionId: txnId, deviceId, amountPaid, energySelected }));
+      localStorage.setItem(
+        "sessionMeta",
+        JSON.stringify({ transactionId: txnId, deviceId, amountPaid, energySelected })
+      );
+
     } catch (err) {
       console.error("❌ Failed to start session:", err.message);
     }
+
+
   };
+  
+React.useEffect(() => {
+  if (sessionStarted && connected && session?.sessionId && publish) {
+    const { sessionId, userId, startTime, startDate } = session;
 
-  useEffect(() => {
-    if (sessionStarted && connected && session?.sessionId && publish) {
-      const { sessionId, userId, startTime, startDate } = session;
+    publish(`${deviceId}/sessionCommand`, JSON.stringify({
+      command: "start",
+      sessionId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId: txnId,
+    }));
 
-      publish(`${deviceId}/sessionCommand`, JSON.stringify({
-        command: "start",
-        sessionId,
-        userId,
-        startTime,
-        startDate,
-        energySelected,
-        amountPaid,
-        transactionId: txnId,
-      }));
-    }
-  }, [sessionStarted, session, connected, publish, deviceId, energySelected, amountPaid, txnId]);
+    console.log("🚀 Published sessionCommand to ESP32:", {
+      command: "start",
+      sessionId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId: txnId,
+    });
+  }
+}, [sessionStarted, session, connected, publish, deviceId, energySelected, amountPaid, txnId]);
 
+
+
+  // Stop current session
   const stopSession = async (trigger = "manual") => {
     if (!session.sessionId) return;
 
     try {
       const token = localStorage.getItem("token");
+      if (!token) throw new Error("No auth token");
+
       const endTime = new Date().toISOString();
 
       await axios.post(
@@ -119,12 +159,14 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
       localStorage.removeItem("sessionMeta");
       setSession({});
       setSessionStarted(false);
+
       navigate("/session-summary", { state: { session: { ...session, endTime } } });
     } catch (err) {
       console.error("❌ Failed to stop session:", err.message);
     }
   };
 
+  // Update session with energy consumed and amount used
   const updateSessionUsage = async (energyConsumed, amountUsed) => {
     if (!session.sessionId) return;
 
@@ -132,6 +174,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
 
     try {
       const token = localStorage.getItem("token");
+      if (!token) throw new Error("No auth token");
 
       await axios.post(
         `${process.env.REACT_APP_API_URL}/api/sessions/update`,
@@ -232,12 +275,13 @@ function useEnergyMeter(deviceId, updateSessionUsage, sessionStarted, amountPaid
   };
 }
 
-// 🛑 ------------------ Drag to Stop Hook ------------------
-function useDragToStop(onStop) {
-  const [dragging, setDragging] = useState(false);
-  const [thumbLeft, setThumbLeft] = useState(0);
 
-  useEffect(() => {
+// ----------- useDragToStop Hook --------------
+function useDragToStop(onStop) {
+  const [dragging, setDragging] = React.useState(false);
+  const [thumbLeft, setThumbLeft] = React.useState(0);
+
+  React.useEffect(() => {
     const move = (e) => {
       if (!dragging) return;
       const track = document.getElementById("slider-track");
@@ -261,6 +305,7 @@ function useDragToStop(onStop) {
     window.addEventListener("mouseup", stop);
     window.addEventListener("touchmove", move);
     window.addEventListener("touchend", stop);
+
     return () => {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", stop);
@@ -272,8 +317,11 @@ function useDragToStop(onStop) {
   return { dragging, setDragging, thumbLeft };
 }
 
-// 🚀 ------------------ Main Component ------------------
+// ------------- Main Component -----------------
 const SessionStatus = () => {
+
+
+  // 1. Get deviceId and other params first
   const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
   const { transactionId: paramTxnId } = useParams();
   const location = useLocation();
@@ -315,22 +363,32 @@ const SessionStatus = () => {
     updateSessionUsage,
   } = useSessionManager({ txnId, deviceId, amountPaid, energySelected, connected, publish });
 
-  useEffect(() => {
-    if (!sessionStarted || deltaEnergy == null) return;
-    setSession((prev) => ({
-      ...prev,
-      energyConsumed: deltaEnergy,
-      amountUsed: parseFloat((deltaEnergy * FIXED_RATE).toFixed(2)),
-    }));
-  }, [deltaEnergy, sessionStarted]);
 
-  useEffect(() => {
+  // Sync session with energy usage deltaEnergy & charging state
+useEffect(() => {
+  if (!sessionStarted || deltaEnergy == null) return;
+
+  setSession((prev) => ({
+    ...prev,
+    energyConsumed: deltaEnergy,
+    amountUsed: parseFloat((deltaEnergy * FIXED_RATE).toFixed(2)),
+  }));
+}, [deltaEnergy, sessionStarted]);
+
+
+  // Start charging once session is ready
+  React.useEffect(() => {
     if (sessionStarted && connected && !charging) {
       startCharging();
     }
   }, [sessionStarted, connected]);
 
-  useEffect(() => {
+
+
+
+
+  // Warn user on page unload if charging active
+  React.useEffect(() => {
     const handler = (e) => {
       if (charging) {
         e.preventDefault();
@@ -340,6 +398,8 @@ const SessionStatus = () => {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [charging]);
+
+
 
   const { dragging, setDragging, thumbLeft } = useDragToStop(() => {
     stopCharging();
@@ -364,8 +424,10 @@ const SessionStatus = () => {
         <div className="charging-info">
           <p className="large-text">{amountPaid} ₹</p>
           <p className="small-text">Amount Paid</p>
+
           <p className="large-text">{energySelected} kWh</p>
           <p className="small-text">Energy Selected</p>
+
           <p className="large-text">{(session.amountUsed ?? 0).toFixed(2)} ₹</p>
           <p className="small-text">Amount Used</p>
 
@@ -379,13 +441,13 @@ const SessionStatus = () => {
       </div>
 
       <div className="live-data">
-        <div className="live-value">
-          <p className="large-text">{voltage ?? 0} V</p>
-          <p className="small-text">Voltage</p>
-        </div>
-        <div className="live-value">
-          <p className="large-text">{current ?? 0} A</p>
-          <p className="small-text">Current</p>
+<div className="live-value">
+  <p className="large-text">{voltage ?? 0} V</p>
+  <p className="small-text">Voltage</p>
+</div>
+<div className="live-value">
+  <p className="large-text">{current ?? 0} A</p>
+  <p className="small-text">Current</p>
         </div>
         <div className="live-value">
           <p className="large-text">{Number(session.amountUsed ?? 0).toFixed(2)} ₹</p>
