@@ -85,8 +85,8 @@ bool relayState = false;
 #define ADDR_RELAY      8     // bool
 #define ADDR_SESSION_ACTIVE 12 // bool
 #define ADDR_TIMESTAMP  16    // uint32_t
-#define SESSION_ENERGY_ADDR    20    // ✅ float (4 bytes), no overlap
-#define ADDR_SESSION_START_ENERGY 24  // or a valid offset
+#define SESSION_ENERGY_ADDR    32    // ✅ float (4 bytes), no overlap
+#define ADDR_SESSION_START_ENERGY 36  // or a valid offset
 
 
 // CONFIGURATION
@@ -336,8 +336,7 @@ if (buttonPressed && !emergencyToggled && (millis() - buttonPressStartTime >= 20
 }
 
   // Session parameters (to be set when session starts)
-String sessionId = "";
-float energySelected = 0.0;     // kWh limit for this session
+
 float amountPaid = 0.0;         // Optional: track payment amount
 unsigned long sessionStartTime = 0; // millis() when session started
 
@@ -520,7 +519,8 @@ void sendSessionStartToBackend(
 
 void endSession() {
   sessionEndMillis = millis();
-  sessionEndEnergy = totalEnergy;
+  sessionEndEnergy = pzem.energy();
+
 
   float energyUsed = sessionEndEnergy - sessionStartEnergy;
   sessionCost = energyUsed * ratePerKWh;
@@ -692,6 +692,8 @@ client.publish((String(DEVICE_ID) + "/status/device").c_str(), "Occupied", true)
 }
 
 void stopSession(bool isEmergency) {
+  sendSessionEndToBackend(sessionId, currentEnergy, deltaEnergy, deltaEnergy * ratePerKWh, isEmergency ? "emergency" : "limitReached", DEVICE_ID);
+
   relayState = false;
   sessionActive = false;
   energySelected = 0.0;
@@ -875,6 +877,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     digitalWrite(RELAY_PIN, HIGH);
     saveSessionToEEPROM(sessionId, userId, startTime, startDate, energySelected, amountPaid, transactionId);
+    sendSessionStartToBackend(sessionId, deviceId, transactionId, startEnergy, energySelected, amountPaid);
 
     // Publish MQTT confirmations
     client.publish((String(DEVICE_ID) + "/relay/state").c_str(), "ON", true);

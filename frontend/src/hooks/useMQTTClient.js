@@ -43,10 +43,12 @@ setMqttClient(client);  // ✅ make reactive
       });
     };
 
-    const handleMessage = (topic, message) => {
-      const msgStr = message.toString();
-      if (onMessage) onMessage(topic, msgStr);
-    };
+const handleMessage = (topic, message) => {
+  const msgStr = message.toString();
+  console.log("📨 MQTT Received:", topic, msgStr);
+  if (onMessage) onMessage(topic, msgStr);
+};
+
 
     const handleError = (err) => {
       console.error("❌ MQTT Error:", err);

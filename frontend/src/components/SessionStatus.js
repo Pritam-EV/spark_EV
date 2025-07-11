@@ -88,6 +88,7 @@ const res = await axios.post(
     startDate,
     amountPaid,
     energySelected,
+    startEnergy,
   },
   { headers: { Authorization: `Bearer ${token}` } }
 );
@@ -270,6 +271,7 @@ React.useEffect(() => {
   const handleMessage = (topic, message) => {
     const msgStr = message.toString();
     const val = parseFloat(msgStr);
+    
 
     if (topic.endsWith("/sensor/voltage")) {
       console.log("📡 Voltage Received:", val);
@@ -403,7 +405,7 @@ const handleMQTTMessage = (topic, msg) => {
 };
 
 // 2. Use MQTT hook — 🔥 this gives you the 3 variables you need
-const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
+const { mqttClient, connected, publish } = useMQTTClient(deviceId, processMqttMsg);
 
 const {
   session,
@@ -422,6 +424,7 @@ const {
   current,
   startCharging,
   stopCharging,
+  handleMQTTMessage: processMqttMsg, 
 } = useEnergyMeter(
   deviceId,
   updateSessionUsage,
