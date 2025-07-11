@@ -319,9 +319,6 @@ function useDragToStop(onStop) {
 
 // ------------- Main Component -----------------
 const SessionStatus = () => {
-
-
-  // 1. Get deviceId and other params first
   const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
   const { transactionId: paramTxnId } = useParams();
   const location = useLocation();
@@ -331,6 +328,25 @@ const SessionStatus = () => {
   const amountPaid = location.state?.amountPaid || localMeta.amountPaid;
   const energySelected = location.state?.energySelected || localMeta.energySelected;
 
+  // ✅ First: Initialize MQTT first (not after)
+  const [processMqttMsg, setProcessMqttMsg] = useState(() => () => {});
+  const { mqttClient, connected, publish } = useMQTTClient(deviceId, (topic, msg) => {
+    console.log("🔔 MQTT Incoming:", topic, msg);
+    processMqttMsg(topic, msg);
+  });
+
+  // ✅ Energy hook comes after MQTT — now publish is valid
+  const energyHook = useEnergyMeter(
+    deviceId,
+    updateSessionUsage,
+    sessionStarted,
+    amountPaid,
+    energySelected,
+    stopSession,
+    mqttClient,
+    publish,
+    connected
+  );
   const {
     charging,
     relayConfirmed,
@@ -339,20 +355,13 @@ const SessionStatus = () => {
     current,
     startCharging,
     stopCharging,
-    handleMQTTMessage: processMqttMsg,
-  } = useEnergyMeter(
-    deviceId,
-    () => {},
-    false,
-    amountPaid,
-    energySelected,
-    () => {},
-    null,
-    null,
-    false
-  );
+    handleMQTTMessage,
+  } = energyHook;
 
-  const { mqttClient, connected, publish } = useMQTTClient(deviceId, processMqttMsg);
+  // Save handler for use in MQTT
+  useEffect(() => {
+    setProcessMqttMsg(() => handleMQTTMessage);
+  }, [handleMQTTMessage]);
 
   const {
     session,
@@ -363,32 +372,30 @@ const SessionStatus = () => {
     updateSessionUsage,
   } = useSessionManager({ txnId, deviceId, amountPaid, energySelected, connected, publish });
 
+  // 🔁 Sync delta energy
+  useEffect(() => {
+    if (!sessionStarted || deltaEnergy == null) return;
+    const amountUsed = parseFloat((deltaEnergy * FIXED_RATE).toFixed(2));
+    console.log("🔁 Updating session with energyUsed:", deltaEnergy, "amountUsed:", amountUsed);
+    setSession((prev) => ({
+      ...prev,
+      energyConsumed: deltaEnergy,
+      amountUsed,
+    }));
+  }, [deltaEnergy, sessionStarted]);
 
-  // Sync session with energy usage deltaEnergy & charging state
-useEffect(() => {
-  if (!sessionStarted || deltaEnergy == null) return;
-
-  setSession((prev) => ({
-    ...prev,
-    energyConsumed: deltaEnergy,
-    amountUsed: parseFloat((deltaEnergy * FIXED_RATE).toFixed(2)),
-  }));
-}, [deltaEnergy, sessionStarted]);
-
-
-  // Start charging once session is ready
-  React.useEffect(() => {
-    if (sessionStarted && connected && !charging) {
+  // ✅ Start charging only after session is confirmed & publish is ready
+  useEffect(() => {
+    if (sessionStarted && connected && publish && !charging) {
+      console.log("⚡ Calling startCharging()");
       startCharging();
+    } else {
+      console.log("⏳ Waiting to start charging:", { sessionStarted, connected, publishAvailable: !!publish });
     }
-  }, [sessionStarted, connected]);
+  }, [sessionStarted, connected, publish]);
 
-
-
-
-
-  // Warn user on page unload if charging active
-  React.useEffect(() => {
+  // Warn on unload
+  useEffect(() => {
     const handler = (e) => {
       if (charging) {
         e.preventDefault();
@@ -399,14 +406,16 @@ useEffect(() => {
     return () => window.removeEventListener("beforeunload", handler);
   }, [charging]);
 
-
-
   const { dragging, setDragging, thumbLeft } = useDragToStop(() => {
+    console.log("🛑 User slid to stop charging");
     stopCharging();
     stopSession("manual");
   });
 
-  if (!session.sessionId) return <p>Loading session data...</p>;
+  if (!session.sessionId) {
+    console.log("⏳ Waiting for session to start...");
+    return <p>Loading session data...</p>;
+  }
 
   return (
     <div className="session-container">
