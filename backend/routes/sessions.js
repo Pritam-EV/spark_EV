@@ -240,17 +240,18 @@ router.post("/payment-success", async (req, res) => {
 });
 
 // ✅ Update session data every 5 seconds
+// POST /api/sessions/update
 router.post("/update", async (req, res) => {
   const { sessionId, energyConsumed, amountUsed } = req.body;
 
   if (!sessionId) {
-    return res.status(400).json({ error: "Session ID is required" });
+    return res.status(400).json({ error: "Missing sessionId" });
   }
 
   try {
     const updatedSession = await Session.findOneAndUpdate(
       { sessionId },
-      { $set: { energyConsumed, amountUsed } },
+      { energyConsumed, amountUsed },
       { new: true }
     );
 
@@ -258,14 +259,13 @@ router.post("/update", async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    res
-      .status(200)
-      .json({ message: "Session updated successfully", updatedSession });
-  } catch (error) {
-    console.error("Error updating session:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(200).json(updatedSession);
+  } catch (err) {
+    console.error("❌ Error updating session usage:", err.message);
+    res.status(500).json({ error: "Failed to update session usage" });
   }
 });
+
 
 // ✅ Fetch session by Session ID (renamed to avoid route collision)
 router.get("/user-sessions", authMiddleware, async (req, res) => {
