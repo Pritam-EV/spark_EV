@@ -384,14 +384,7 @@ function useDragToStop(onStop) {
 
 // ------------- Main Component -----------------
 const SessionStatus = () => {
-  // 1. Define the MQTT message handler to pass into the hook
-const handleMQTTMessage = (topic, msg) => {
-  // You can log or add filtering here if needed
-  console.log("🔔 MQTT Received:", topic, msg);
-};
 
-// 2. Use MQTT hook — 🔥 this gives you the 3 variables you need
-const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
 
   // 1. Get deviceId and other params first
   const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
@@ -403,6 +396,14 @@ const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMes
   const amountPaid = location.state?.amountPaid || localMeta.amountPaid;
   const energySelected = location.state?.energySelected || localMeta.energySelected;
 
+    // 1. Define the MQTT message handler to pass into the hook
+const handleMQTTMessage = (topic, msg) => {
+  // You can log or add filtering here if needed
+  console.log("🔔 MQTT Received:", topic, msg);
+};
+
+// 2. Use MQTT hook — 🔥 this gives you the 3 variables you need
+const { mqttClient, connected, publish } = useMQTTClient(deviceId, handleMQTTMessage);
 
 const {
   session,
