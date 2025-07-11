@@ -48,60 +48,68 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
     loadOrStartSession();
   }, [txnId, deviceId, amountPaid, energySelected, sessionStarted]);
 
-  const startSession = async (txnId, amountPaid, energySelected) => {
-    try {
-      const token = localStorage.getItem("token");
-      const user = JSON.parse(localStorage.getItem("user"));
-      if (!token || !user) throw new Error("Missing auth or user");
+const startSession = async (txnId, amountPaid, energySelected) => {
+  try {
+    const token = localStorage.getItem("token");
+    console.log("🔐 Token:", token); // ✅ Log token
 
-      const now = new Date();
-      const sessionId = "session_" + now.getTime();
-      const startTime = now.toISOString();
-      const startDate = startTime.split("T")[0];
-      const userId = user?._id || user?.id;
-      const startEnergyRaw = localStorage.getItem(`startEnergy_${deviceId}`);
-      const startEnergy = startEnergyRaw ? parseFloat(startEnergyRaw) : null;
+    if (!token) throw new Error("No auth token");
 
-      console.log("🧪 Starting session with", {
+    const now = new Date();
+    const sessionId = "session_" + now.getTime();
+    const startTime = now.toISOString();
+    const startDate = startTime.split("T")[0];
+    const user = JSON.parse(localStorage.getItem("user"));
+    const startEnergyRaw = localStorage.getItem(`startEnergy_${deviceId}`);
+    const startEnergy = startEnergyRaw !== null ? parseFloat(startEnergyRaw) : null;
+    const userId = user?._id || user?.id;
+
+    console.log("🧪 Starting session with:", {
+      sessionId,
+      userId,
+      deviceId,
+      transactionId: txnId,
+      startTime,
+      startDate,
+      amountPaid,
+      energySelected,
+      startEnergy,
+    });
+
+    const res = await axios.post(
+      `${process.env.REACT_APP_API_URL}/api/sessions/start`,
+      {
         sessionId,
         userId,
         deviceId,
-        txnId,
+        transactionId: txnId,
         startTime,
         startDate,
         amountPaid,
         energySelected,
         startEnergy,
-      });
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-      const res = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/sessions/start`,
-        {
-          sessionId,
-          userId,
-          deviceId,
-          transactionId: txnId,
-          startTime,
-          startDate,
-          amountPaid,
-          energySelected,
-          startEnergy,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+    console.log("📬 POST response:", res);       // ✅ Full response object
+    console.log("📦 res.data:", res.data);       // ✅ Data returned from backend
 
-      const newSession = { ...res.data, startTime, startDate };
-      setSession(newSession);
-      setSessionStarted(true);
-      localStorage.setItem("activeSession", JSON.stringify(newSession));
-      localStorage.setItem(
-        "sessionMeta",
-        JSON.stringify({ transactionId: txnId, deviceId, amountPaid, energySelected })
-      );
-    } catch (err) {
-      console.error("❌ Failed to start session:", err.message);
-    }
-  };
+    const newSession = { ...res.data, startTime, startDate };
+    setSession(newSession);
+    setSessionStarted(true);
+
+    localStorage.setItem("activeSession", JSON.stringify(newSession));
+    localStorage.setItem(
+      "sessionMeta",
+      JSON.stringify({ transactionId: txnId, deviceId, amountPaid, energySelected })
+    );
+
+  } catch (err) {
+    console.error("❌ Failed to start session:", err.message);
+  }
+};
+
 
   useEffect(() => {
     if (sessionStarted && connected && session?.sessionId && publish) {
