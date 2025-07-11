@@ -523,7 +523,7 @@ useEffect(() => {
 </div>
 
         <div className="live-value">
-          <p className="large-text">{(session.energyConsumed ?? deltaEnergy).toFixed(3)} kWh</p>
+          <p className="large-text">{Number(session.amountUsed ?? 0).toFixed(2)} ₹</p>
           <p className="small-text">Energy Used</p>
         </div>
       </div>
