@@ -91,6 +91,17 @@ const startSession = async (txnId, amountPaid, energySelected) => {
       },
       { headers: { Authorization: `Bearer ${token}` } }
     );
+console.log("🛫 Sending to backend:", {
+  sessionId,
+  userId,
+  deviceId,
+  transactionId: txnId,
+  startTime,
+  startDate,
+  amountPaid,
+  energySelected,
+  startEnergy,
+});
 
     console.log("📬 POST response:", res);       // ✅ Full response object
     console.log("📦 res.data:", res.data);       // ✅ Data returned from backend
