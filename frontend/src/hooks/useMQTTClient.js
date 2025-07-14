@@ -11,63 +11,41 @@ export default function useMQTTClient(deviceId, onMessage) {
   const clientRef = useRef(null);
   const [connected, setConnected] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     if (!deviceId) return;
 
-    const voltageTopic = `${deviceId}/voltage`;
-    const currentTopic = `${deviceId}/current`;
-    const relayTopic = `${deviceId}/relayState`;
-    const energyTopic = `${deviceId}/energy`;  // Add this line
+    console.log("▶️ Connecting to", CONNECTION_URL);
+    const client = mqtt.connect(CONNECTION_URL, OPTIONS);
 
-    const client = mqtt.connect(MQTT_BROKER_URL, {
-      username: MQTT_USER,
-      password: MQTT_PASSWORD,
-      rejectUnauthorized: false,
-      reconnectPeriod: 2000,
+    client.on("connect", () => {
+      console.log("✅ MQTT WS connected");
+      setConnected(true);
+      client.subscribe([
+        `device/${deviceId}/sensor/voltage`,
+        `device/${deviceId}/sensor/current`,
+        `device/${deviceId}/sensor/energy`,
+        `device/${deviceId}/relay/state`
+      ], { qos: 1 });
+    });
+
+    client.on("error", err => {
+      console.error("❌ MQTT WS error:", err.message);
+    });
+
+    client.on("close", () => {
+      console.warn("🔌 MQTT WS closed");
+      setConnected(false);
+    });
+
+    client.on("message", (topic, message) => {
+      onMessage(topic, message.toString());
     });
 
     clientRef.current = client;
+    setMqttClient(client);
 
-    const handleConnect = () => {
-      console.log("✅ MQTT Connected");
-      setConnected(true);
-      client.subscribe([voltageTopic, currentTopic, relayTopic, energyTopic]);
-    };
-
-    const handleMessage = (topic, message) => {
-      const value = parseFloat(message.toString());
-      onMessage(topic, value);
-    };
-
-    const handleError = (err) => {
-      console.error("❌ MQTT Error:", err);
-    };
-
-    const handleClose = () => {
-      console.warn("🔌 MQTT Disconnected");
-      setConnected(false);
-    };
-
-    client.on("connect", handleConnect);
-client.on("message", (topic, message) => {
-  const value = message.toString(); // or parseFloat if needed
-  if (onMessage) {
-    onMessage(topic, value);
-  }
-});
-
-    client.on("error", handleError);
-    client.on("close", handleClose);
-
-    return () => {
-      console.log("🧹 Cleaning up MQTT client...");
-      client.removeListener("connect", handleConnect);
-      client.removeListener("message", handleMessage);
-      client.removeListener("error", handleError);
-      client.removeListener("close", handleClose);
-      client.end(true);
-    };
-  }, [deviceId]);
+    return () => client.end(true);
+  }, [deviceId, onMessage]);
 
   const publish = (topic, message) => {
     if (clientRef.current?.connected) {
