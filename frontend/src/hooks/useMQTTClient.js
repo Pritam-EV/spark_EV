@@ -47,8 +47,6 @@ useEffect(() => {
       onMessage(topic, message.toString());
     });
 
-    clientRef.current = client;
-    setMqttClient(client);
 
     return () => client.end(true);
   }, [deviceId, onMessage]);
