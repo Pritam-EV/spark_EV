@@ -11,6 +11,7 @@ const FIXED_RATE = 20; // ₹ per kWh
 // ----------- useSessionManager Hook --------------
 function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connected, publish }) {
   const navigate = useNavigate();
+  const sentOnce = useRef(false);
   const [session, setSession] = useState(() =>
     JSON.parse(localStorage.getItem("activeSession")) || {}
   );
@@ -277,9 +278,11 @@ function useDragToStop(onStop) {
 
 // ------------- Main Component -----------------
 const SessionStatus = () => {
+  
   const localMeta = JSON.parse(localStorage.getItem("sessionMeta")) || {};
   const { transactionId: paramTxnId } = useParams();
   const location = useLocation();
+const sentOnce = useRef(false);
 
   const txnId = location.state?.transactionId || localMeta.transactionId || paramTxnId;
   const deviceId = location.state?.deviceId || localMeta.deviceId;
@@ -334,34 +337,34 @@ const SessionStatus = () => {
   }, [charging]);
 
 useEffect(() => {
-    if (
-      !sentRef.current &&              // not yet sent
-      sessionStarted &&                // session created in backend
-      connected &&                     // MQTT up
-      publish &&                       // have publish fn
-      session?.sessionId               // have id
-    ) {
-      const { sessionId, userId, startTime, startDate } = session;
+  if (
+    !sentOnce.current &&            // ✅ correct
+    sessionStarted &&
+    connected &&
+    publish &&
+    session?.sessionId
+  ) {
+    const { sessionId, userId, startTime, startDate } = session;
 
-      const payload = {
-        command:        "start",
-        sessionId,      // frontend‑generated id
-        deviceId,       // charger id
-        userId,
-        startTime,
-        startDate,
-        energySelected,
-        amountPaid,
-        transactionId:  txnId
-      };
+    const payload = {
+      command:        "start",
+      sessionId,
+      deviceId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId:  txnId
+    };
 
-      console.log("🚀 1× sessionCommand → ESP32:", payload);
-      publish(`device/${deviceId}/sessionCommand`, JSON.stringify(payload), { qos: 1 });
+    console.log("🚀 1× sessionCommand → ESP32:", payload);
+    publish(`device/${deviceId}/sessionCommand`, JSON.stringify(payload), { qos: 1 });
 
-      sentRef.current = true;          // ⚑ mark as sent
-    }
-  }, [sessionStarted, connected, publish, session, deviceId,
-      energySelected, amountPaid, txnId]);
+    sentOnce.current = true;        // ✅ correct
+  }
+}, [sessionStarted, connected, publish, session, deviceId, energySelected, amountPaid, txnId]);
+
 
 
   useEffect(() => {
