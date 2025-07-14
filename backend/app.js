@@ -77,8 +77,11 @@ app.get("/api/getDevice", async (req, res) => {
 
 
 
-
+  require('./mqttSubscriber')();
 // ✅ Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-// exports.api = functions.https.onRequest(app);
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  // start the MQTT subscriber once HTTP is up:
+
+});

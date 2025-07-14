@@ -287,7 +287,6 @@ void publishSessionData() {
   if (isnan(voltage) || isnan(current)) {
     Serial.println("PZEM read error!");
     publishStatus("faulty");
-    endSession();
     return;
   }
   energyConsumed = eNow - initialEnergy;
