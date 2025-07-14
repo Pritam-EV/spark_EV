@@ -60,7 +60,8 @@ void setup() {
   topicSessionEnd   = "device/" + deviceId + "/session/end";
   topicStatus       = "device/" + deviceId + "/status";
   topicSessionInfo  = "device/" + deviceId + "/session/info";
-
+  topicSessionInfo  = "device/" + deviceId + "/session/info";
+  
   connectWiFi();
   configTime(0, 0, "pool.ntp.org");        // UTC
 

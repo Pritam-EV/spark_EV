@@ -142,7 +142,7 @@ console.log("🛫 Sending to backend:", {
       console.log("🚀 Publishing sessionCommand to ESP32:", command);
 // When we publish start‐command:
 publish(`device/${deviceId}/sessionCommand`,
-        JSON.stringify({ command:"start", sessionId, userId, startTime, startDate, energySelected, amountPaid, transactionId:txnId })
+        JSON.stringify({ command:"start", sessionId, deviceId, userId, startTime, startDate, energySelected, amountPaid, transactionId:txnId })
 );
     }
   }, [sessionStarted, session, connected, publish, deviceId, energySelected, amountPaid, txnId]);
