@@ -87,28 +87,37 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
   };
 
   useEffect(() => {
-    if (sessionStarted && connected && session?.sessionId && publish) {
-      const { sessionId, userId, startTime, startDate } = session;
-      console.log("🚀 Publishing sessionCommand to ESP32:", {
-        command: "start", sessionId, deviceId, userId, startTime, startDate,
-        energySelected, amountPaid, transactionId: txnId,
-      });
-      publish(
-        `device/${deviceId}/sessionCommand`,
-        JSON.stringify({
-          command: "start",
-          sessionId,
-          deviceId,
-          userId,
-          startTime,
-          startDate,
-          energySelected,
-          amountPaid,
-          transactionId: txnId,
-        })
-      );
-    }
-  }, [sessionStarted, session, connected, publish, deviceId, energySelected, amountPaid, txnId]);
+    if (
+      !sessionStarted            ||   // session not ready yet
+      !connected                 ||   // MQTT not connected
+      sentOnce.current           ||   // already sent
+      !session?.sessionId        ||   // no id yet
+      !publish
+    ) return;
+
+    const { sessionId, userId, startTime, startDate } = session;
+
+    const payload = {
+      command:       "start",
+      sessionId,
+      deviceId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId: txnId,
+    };
+
+    console.log("🚀 Sending *single* sessionCommand:", payload);
+
+    // mqtt.js accepts an optional options object as 3rd param; QoS 1 is fine.
+    publish(`device/${deviceId}/sessionCommand`,
+            JSON.stringify(payload),            // message
+            { qos: 1, retain: false });
+
+    sentOnce.current = true;          // latch
+  }, [sessionStarted, connected]);    // minimal deps
 
   const stopSession = async (trigger = "manual") => {
     if (!session.sessionId) return;
@@ -128,6 +137,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
     } catch (err) {
       console.error("❌ Failed to stop session:", err.message);
     }
+    sentOnce.current = false;   // allow the next session to publish
   };
 
   const updateSessionUsage = async (energyConsumed, amountUsed) => {
@@ -277,8 +287,7 @@ const SessionStatus = () => {
   const energySelected = location.state?.energySelected || localMeta.energySelected;
 
   const [processMessage, setProcessMessage] = useState(() => () => {});
-  const { mqttClient, connected, publish } = useMQTTClient(deviceId, processMessage);
-  const sentRef = useRef(false);      
+  const { mqttClient, connected, publish } = useMQTTClient(deviceId, processMessage); 
   const {
     session,
     setSession,
