@@ -1,14 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import mqtt from "mqtt";
 
-const BROKER = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
-const OPTS = {
-  username: "pritam",
-  password: "Pritam123",
+
+const MQTT_HOST = '223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud';
+const MQTT_PORT = 8884;      // your HiveMQ WebSocket port
+const MQTT_PATH = '/mqtt';   // HiveMQ’s default WS path
+
+const options = {
+  protocol: 'wss',
+  host: MQTT_HOST,
+  port: MQTT_PORT,
+  path: MQTT_PATH,
+  username: 'pritam',
+  password: 'Pritam123',
   reconnectPeriod: 1000,
   connectTimeout: 5000,
   clean: true,
-  rejectUnauthorized: false,
+  rejectUnauthorized: false,  // dev only
 };
 
 export default function useMQTTClient(deviceId, onMessage) {
@@ -17,7 +25,7 @@ export default function useMQTTClient(deviceId, onMessage) {
 
   useEffect(() => {
     if (!deviceId) return;
-    const client = mqtt.connect(BROKER, { ...OPTS, clientId:`web_${deviceId}_${Date.now()}` });
+    const client = mqtt.connect(options);
     clientRef.current = client;
 
     const topics = [
@@ -28,11 +36,14 @@ export default function useMQTTClient(deviceId, onMessage) {
     ];
 
     client.on("connect", () => {
+            console.log('✅ MQTT Connected');
       setConnected(true);
       client.subscribe(topics, { qos:1 });
     });
-    client.on("message", (t, m) => onMessage(t, m.toString()));
-    client.on("close", ()=> setConnected(false));
+    client.on('message', (t, m) => onMessage(t, m.toString()));
+    client.on('close', () => setConnected(false));
+    client.on('error', err => console.error('MQTT Error', err));
+
 
     return () => client.end(true);
   }, [deviceId, onMessage]);
