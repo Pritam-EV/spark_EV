@@ -29,11 +29,11 @@ export default function useMQTTClient(deviceId, onMessage) {
 
     clientRef.current = client;
 
-     const handleConnect = () => {
-       console.log("✅ MQTT Connected");
-       setConnected(true);
-       client.subscribe([voltageTopic, currentTopic, energyTopic, relayStateTopic], { qos: 1 });
-     };
+    const handleConnect = () => {
+      console.log("✅ MQTT Connected");
+      setConnected(true);
+      client.subscribe([voltageTopic, currentTopic, energyTopic, relayStateTopic], { qos: 1 });
+    };
 
     const handleMessage = (topic, message) => {
       const value = parseFloat(message.toString());
@@ -59,10 +59,6 @@ client.on("message", (topic, message) => {
 
     client.on("error", handleError);
     client.on("close", handleClose);
-   client.on("connect", handleConnect);
-  client.on("message", handleMessage);
-    client.on("error", handleError);
-    client.on("close", handleClose);
 
     return () => {
       console.log("🧹 Cleaning up MQTT client...");
@@ -72,11 +68,11 @@ client.on("message", (topic, message) => {
       client.removeListener("close", handleClose);
       client.end(true);
     };
-  }, [deviceId, onMessage]);
+  }, [deviceId]);
 
   const publish = (topic, message) => {
     if (clientRef.current?.connected) {
-      clientRef.current.publish(topic, message, { qos: 1 });
+      clientRef.current.publish(topic, message);
     } else {
       console.warn("⚠️ Cannot publish — MQTT not connected");
     }
