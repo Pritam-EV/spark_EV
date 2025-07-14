@@ -11,8 +11,14 @@ export default function useMQTTClient(deviceId, onMessage) {
   const clientRef = useRef(null);
   const [connected, setConnected] = useState(false);
 
-useEffect(() => {
+  useEffect(() => {
     if (!deviceId) return;
+
+    const voltageTopic = `device/${deviceId}/sensor/voltage`;
+    const currentTopic = `device/${deviceId}/sensor/current`;
+    const energyTopic  = `device/${deviceId}/sensor/energy`;
+    const relayStateTopic = `device/${deviceId}/relay/state`;
+    const relaySetTopic   = `device/${deviceId}/relay/set`;    // for publishes
 
     const client = mqtt.connect(MQTT_BROKER_URL, {
       username: MQTT_USER,
@@ -23,37 +29,54 @@ useEffect(() => {
 
     clientRef.current = client;
 
-    client.on("connect", () => {
-      console.log("✅ MQTT WS connected");
-      setConnected(true);
-      client.subscribe([
-        `device/${deviceId}/sensor/voltage`,
-        `device/${deviceId}/sensor/current`,
-        `device/${deviceId}/sensor/energy`,
-        `device/${deviceId}/relay/state`
-      ], { qos: 1 });
-    });
+     const handleConnect = () => {
+       console.log("✅ MQTT Connected");
+       setConnected(true);
+       client.subscribe([voltageTopic, currentTopic, energyTopic, relayStateTopic], { qos: 1 });
+     };
 
-    client.on("error", err => {
-      console.error("❌ MQTT WS error:", err.message);
-    });
+    const handleMessage = (topic, message) => {
+      const value = parseFloat(message.toString());
+      onMessage(topic, value);
+    };
 
-    client.on("close", () => {
-      console.warn("🔌 MQTT WS closed");
+    const handleError = (err) => {
+      console.error("❌ MQTT Error:", err);
+    };
+
+    const handleClose = () => {
+      console.warn("🔌 MQTT Disconnected");
       setConnected(false);
-    });
+    };
 
-    client.on("message", (topic, message) => {
-      onMessage(topic, message.toString());
-    });
+    client.on("connect", handleConnect);
+client.on("message", (topic, message) => {
+  const value = message.toString(); // or parseFloat if needed
+  if (onMessage) {
+    onMessage(topic, value);
+  }
+});
 
+    client.on("error", handleError);
+    client.on("close", handleClose);
+   client.on("connect", handleConnect);
+  client.on("message", handleMessage);
+    client.on("error", handleError);
+    client.on("close", handleClose);
 
-    return () => client.end(true);
+    return () => {
+      console.log("🧹 Cleaning up MQTT client...");
+      client.removeListener("connect", handleConnect);
+      client.removeListener("message", handleMessage);
+      client.removeListener("error", handleError);
+      client.removeListener("close", handleClose);
+      client.end(true);
+    };
   }, [deviceId, onMessage]);
 
   const publish = (topic, message) => {
     if (clientRef.current?.connected) {
-      clientRef.current.publish(topic, message);
+      clientRef.current.publish(topic, message, { qos: 1 });
     } else {
       console.warn("⚠️ Cannot publish — MQTT not connected");
     }
