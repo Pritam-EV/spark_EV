@@ -74,7 +74,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
       console.log("📬 POST response:", res);
       console.log("📦 res.data:", res.data);
 
-      const newSession = { ...res.data, startTime, startDate };
+      const newSession = { ...res.data, userId, startTime, startDate };
       setSession(newSession);
       setSessionStarted(true);
       localStorage.setItem("activeSession", JSON.stringify(newSession));
@@ -350,7 +350,7 @@ useEffect(() => {
       command:        "start",
       sessionId,
       deviceId,
-      userId,
+      userId:  session.userId,
       startTime,
       startDate,
       energySelected,
