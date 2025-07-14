@@ -6,7 +6,7 @@ const HOST = "223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud";
 const WS_PORT = 8884;
 const WS_PATH = "/mqtt";    // exactly what your HiveMQ Cloud instance uses
 
-const CONNECTION_URL = `wss://${HOST}:${WS_PORT}${WS_PATH}`;
+const CONNECTION_URL = `ws://${HOST}:${WS_PORT}${WS_PATH}`;
 
 const OPTIONS = {
   username: "pritam",
