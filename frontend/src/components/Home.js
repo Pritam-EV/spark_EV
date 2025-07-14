@@ -19,8 +19,8 @@ const Home = () => {
   useEffect(() => {
     const fetchDevices = async () => {
       try {
-        const response = await axios.get(API_URL);
-        setDevices(response.data);
+        const res = await axios.get(`${API}/devices`);
+          setDevices(res.data);
       } catch (error) {
         console.error("Error fetching devices:", error);
       }

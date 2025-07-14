@@ -6,7 +6,7 @@ const authRoutes = require("./routes/auth");
 const deviceRoutes = require("./routes/devices");
 const sessionRoutes = require("./routes/sessions");
 const Device = require("./models/device");
-const Session = require("./models/session");
+const Session = require("./models/session");  
 require("dotenv").config();
 dotenv.config();
 const app = express();
@@ -57,57 +57,7 @@ app.use(
 
 
 
-// ✅ Start a session
-app.post("/api/sessions/start", async (req, res) => {
-  try {
-    console.log("🔹 Full Request Body Received:", req.body); // LOG FULL REQUEST BODY
 
-    const { sessionId, deviceId, transactionId, startTime, startDate, amountPaid, energySelected } = req.body;
-
-  
- // 🚨 Debug individual fields
- console.log("🔹 Extracted values:");
- console.log("  - sessionId:", sessionId);
- console.log("  - deviceId:", deviceId);
- console.log("  - transactionId:", transactionId);
- console.log("  - startTime:", startTime);
- console.log("  - startDate:", startDate);
- console.log("  - amountPaid:", amountPaid);
- console.log("  - energySelected:", energySelected);
-
-
-    if (!sessionId || !deviceId || !transactionId || !startTime || !startDate || amountPaid === undefined || energySelected === undefined) {
-      console.error("❌ Missing required fields!", { sessionId, deviceId, transactionId, startTime, startDate, amountPaid, energySelected });
-      return res.status(400).json({ error: "Transaction ID and Device ID are required" });
-    }
-    
-    if (!startDate) {
-      throw new Error("startDate is missing from request body");
-    }
-    console.log("✅ Extracted session data:", { sessionId, startTime, startDate });
-
-    const existingSession = await Session.findOne({ transactionId });
-    if (existingSession) {
-      return res.status(400).json({ error: "Session already exists with this transaction ID" });
-    }
-
-    const newSession = new Session({
-      transactionId,
-      deviceId,
-      sessionId: `session-${transactionId}`,
-      startTime, // ✅ Use standardized UTC format
-      startDate, // ✅ Extract only the date
-      amountPaid,     // ✅ Ensure amountPaid is saved
-     energySelected, // ✅ Ensure energySelected is saved
-    });
-
-    await newSession.save();
-    return res.status(201).json({ message: "Session started", sessionId });
-  } catch (error) {
-    console.error("Error starting session:", error.message);
-    return res.status(400).json({ error: error.message });
-  }
-});
 
 // ✅ Get session details
 app.get("/api/getDevice", async (req, res) => {
@@ -125,73 +75,7 @@ app.get("/api/getDevice", async (req, res) => {
   }
 });
 
-// ✅ Update energy consumed and amount used
-app.post("/api/sessions/update", async (req, res) => {
-  try {
-    const { sessionId, energyConsumed, amountUsed } = req.body;
 
-    if (!sessionId) return res.status(400).json({ error: "Session ID is required" });
-
-    const session = await Session.findOne({ sessionId });
-    if (!session) return res.status(404).json({ error: "Session not found" });
-
-    session.energyConsumed = energyConsumed;
-    session.amountUsed = amountUsed;
-    await session.save();
-
-    res.status(200).json({ message: "Session data updated successfully" });
-  } catch (error) {
-    console.error("Error updating session data:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ✅ Stop session and save end time & trigger (auto/manual)
-app.post("/api/sessions/stop", async (req, res) => {
-  try {
-    const { sessionId, endTime, endTrigger } = req.body;
-
-    if (!sessionId || !endTime || !endTrigger) {
-      return res.status(400).json({ error: "Session ID, end time, and trigger type are required" });
-    }
-
-    const session = await Session.findOne({ sessionId });
-    if (!session) return res.status(404).json({ error: "Session not found" });
-
-    session.endTime = new Date(endTime).toISOString(); // ✅ Standardize time format
-    session.endTrigger = endTrigger;
-    await session.save();
-
-    res.status(200).json({ message: "Session ended successfully" });
-  } catch (error) {
-    console.error("Error stopping session:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-
-// ✅ Check if an active session exists for a user/device
-app.get("/api/sessions/active", async (req, res) => {
-  try {
-    const { userId, deviceId } = req.query;
-
-    if (!userId || !deviceId) {
-      return res.status(400).json({ error: "User ID and Device ID are required" });
-    }
-
-    // 🔍 Find an active session (No endTime means session is still active)
-    const activeSession = await Session.findOne({ userId, deviceId, endTime: null });
-
-    if (!activeSession) {
-      return res.status(404).json({ message: "No active session found" });
-    }
-
-    res.status(200).json(activeSession);
-  } catch (error) {
-    console.error("Error checking active session:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
 
 // ✅ Start Server

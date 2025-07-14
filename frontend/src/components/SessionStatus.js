@@ -7,6 +7,8 @@ import useMQTTClient from "../hooks/useMQTTClient";
 
 // Constants
 const FIXED_RATE = 20; // ₹ per kWh
+const API = process.env.REACT_APP_API_URL;
+
 
 // ----------- useSessionManager Hook --------------
 function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connected, publish }) {
@@ -138,7 +140,10 @@ console.log("🛫 Sending to backend:", {
       };
 
       console.log("🚀 Publishing sessionCommand to ESP32:", command);
-      publish(`${deviceId}/sessionCommand`, JSON.stringify(command));
+// When we publish start‐command:
+publish(`device/${deviceId}/sessionCommand`,
+        JSON.stringify({ command:"start", sessionId, userId, startTime, startDate, energySelected, amountPaid, transactionId:txnId })
+);
     }
   }, [sessionStarted, session, connected, publish, deviceId, energySelected, amountPaid, txnId]);
 
@@ -220,7 +225,7 @@ function useEnergyMeter(
       setVoltage(value);
     } else if (topic.endsWith("/sensor/current")) {
       setCurrent(value);
-    } else if (topic.endsWith("/sensor/energy")) {
+    } else if (topic.endsWith("/device/${deviceId}/sensor/energy")) {
       if (startEnergy === null && charging) {
         setStartEnergy(value);
         localStorage.setItem(`startEnergy_${deviceId}`, value);
@@ -262,14 +267,14 @@ function useEnergyMeter(
   const startCharging = () => {
     if (connected && mqttClient && deviceId) {
       console.log("⚡ Sending Relay ON command...");
-      publish(`${deviceId}/relay/set`, "ON");
+      publish(`device/${deviceId}/relay/set`, "ON");
     }
   };
 
   const stopCharging = () => {
     if (connected && mqttClient && deviceId) {
       console.log("🛑 Sending Relay OFF command...");
-      publish(`${deviceId}/relay/set`, "OFF");
+      publish(`device/${deviceId}/relay/set`, "OFF");
       setCharging(false);
       setRelayConfirmed(false);
     }
