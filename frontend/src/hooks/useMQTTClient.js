@@ -1,73 +1,80 @@
+// src/hooks/useMQTTClient.js
+
 import { useEffect, useRef, useState } from "react";
 import mqtt from "mqtt";
 
-
-const HOST = "223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud";
-const WS_PORT = 8884;
-const WS_PATH = "/mqtt";    // exactly what your HiveMQ Cloud instance uses
-
-const CONNECTION_URL = `wss://${HOST}:${WS_PORT}${WS_PATH}`;
-
-const OPTIONS = {
-  username: "pritam",
-  password: "Pritam123",
-  clean: true,
-  connectTimeout: 100000,
-  reconnectPeriod: 10000,
-  // protocolId/protocolVersion are optional in browser—
-  // mqtt.js will default to the correct values for MQTT v3.1.1
-};
+const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
+const MQTT_USER = "pritam";
+const MQTT_PASSWORD = "Pritam123";
 
 export default function useMQTTClient(deviceId, onMessage) {
-  const clientRef = useRef();
+  const clientRef = useRef(null);
   const [connected, setConnected] = useState(false);
 
-useEffect(() => {
-  if (!deviceId) return;
+  useEffect(() => {
+    if (!deviceId) return;
 
-  console.log("▶️ Connecting to", CONNECTION_URL);
-  const client = mqtt.connect(CONNECTION_URL, OPTIONS);
+    const voltageTopic = `${deviceId}/voltage`;
+    const currentTopic = `${deviceId}/current`;
+    const relayTopic = `${deviceId}/relayState`;
+    const energyTopic = `${deviceId}/energy`;  // Add this line
 
-  client.on("connect", () => {
-    console.log("✅ MQTT WS connected");
-    setConnected(true);
-
-    const topics = [
-      `device/${deviceId}/sensor/voltage`,
-      `device/${deviceId}/sensor/current`,
-      `device/${deviceId}/sensor/energy`,
-      `device/${deviceId}/relay/state`,
-    ];
-
-    client.subscribe(topics, { qos: 1 }, err => {
-      if (err) console.error("Subscribe failed", err);
+    const client = mqtt.connect(MQTT_BROKER_URL, {
+      username: MQTT_USER,
+      password: MQTT_PASSWORD,
+      rejectUnauthorized: false,
+      reconnectPeriod: 2000,
     });
-  });
 
-  client.on("error", err => {
-    console.error("❌ MQTT WS error:", err.message);
-  });
+    clientRef.current = client;
 
-  client.on("close", () => {
-    console.warn("🔌 MQTT WS closed");
-    setConnected(false);
-  });
+    const handleConnect = () => {
+      console.log("✅ MQTT Connected");
+      setConnected(true);
+      client.subscribe([voltageTopic, currentTopic, relayTopic, energyTopic]);
+    };
 
-  client.on("message", (topic, message) => {
-    onMessage(topic, message.toString());
-  });
+    const handleMessage = (topic, message) => {
+      const value = parseFloat(message.toString());
+      onMessage(topic, value);
+    };
 
+    const handleError = (err) => {
+      console.error("❌ MQTT Error:", err);
+    };
 
+    const handleClose = () => {
+      console.warn("🔌 MQTT Disconnected");
+      setConnected(false);
+    };
 
-  return () => {
-    client.end(true);
-  };
-}, [deviceId, onMessage]);
+    client.on("connect", handleConnect);
+client.on("message", (topic, message) => {
+  const value = message.toString(); // or parseFloat if needed
+  if (onMessage) {
+    onMessage(topic, value);
+  }
+});
 
+    client.on("error", handleError);
+    client.on("close", handleClose);
 
-  const publish = (topic, msg) => {
-    if (clientRef.current?.connected) 
-      clientRef.current.publish(topic, msg, { qos:1, retain:false });
+    return () => {
+      console.log("🧹 Cleaning up MQTT client...");
+      client.removeListener("connect", handleConnect);
+      client.removeListener("message", handleMessage);
+      client.removeListener("error", handleError);
+      client.removeListener("close", handleClose);
+      client.end(true);
+    };
+  }, [deviceId]);
+
+  const publish = (topic, message) => {
+    if (clientRef.current?.connected) {
+      clientRef.current.publish(topic, message);
+    } else {
+      console.warn("⚠️ Cannot publish — MQTT not connected");
+    }
   };
 
   return { mqttClient: clientRef.current, connected, publish };
