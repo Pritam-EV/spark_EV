@@ -7,8 +7,6 @@ import useMQTTClient from "../hooks/useMQTTClient";
 
 // Constants
 const FIXED_RATE = 20; // ₹ per kWh
-const API = process.env.REACT_APP_API_URL;
-
 
 // ----------- useSessionManager Hook --------------
 function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connected, publish }) {
@@ -21,16 +19,13 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
   useEffect(() => {
     const loadOrStartSession = async () => {
       if (sessionStarted) return;
-
       try {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("No auth token");
-
         const res = await axios.get(
           `${process.env.REACT_APP_API_URL}/api/sessions/active?deviceId=${deviceId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-
         if (res.data?.sessionId) {
           console.log("📦 Existing session loaded from DB");
           setSession(res.data);
@@ -41,126 +36,90 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
       } catch (err) {
         console.warn("ℹ️ No active session found. Starting new...");
       }
-
       if (txnId && deviceId) {
         await startSession(txnId, amountPaid, energySelected);
       }
     };
-
     loadOrStartSession();
   }, [txnId, deviceId, amountPaid, energySelected, sessionStarted]);
 
-const startSession = async (txnId, amountPaid, energySelected) => {
-  try {
-    const token = localStorage.getItem("token");
-    console.log("🔐 Token:", token); // ✅ Log token
+  const startSession = async (txnId, amountPaid, energySelected) => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log("🔐 Token:", token);
+      if (!token) throw new Error("No auth token");
+      const now = new Date();
+      const sessionId = "session_" + now.getTime();
+      const startTime = now.toISOString();
+      const startDate = startTime.split("T")[0];
+      const user = JSON.parse(localStorage.getItem("user"));
+      const startEnergyRaw = localStorage.getItem(`startEnergy_${deviceId}`);
+      const startEnergy = startEnergyRaw !== null ? parseFloat(startEnergyRaw) : null;
+      const userId = user?._id || user?.id;
 
-    if (!token) throw new Error("No auth token");
+      console.log("🧪 Starting session with:", {
+        sessionId, userId, deviceId, transactionId: txnId, startTime,
+        startDate, amountPaid, energySelected, startEnergy,
+      });
 
-    const now = new Date();
-    const sessionId = "session_" + now.getTime();
-    const startTime = now.toISOString();
-    const startDate = startTime.split("T")[0];
-    const user = JSON.parse(localStorage.getItem("user"));
-    const startEnergyRaw = localStorage.getItem(`startEnergy_${deviceId}`);
-    const startEnergy = startEnergyRaw !== null ? parseFloat(startEnergyRaw) : null;
-    const userId = user?._id || user?.id;
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/sessions/start`,
+        {
+          sessionId, userId, deviceId, transactionId: txnId,
+          startTime, startDate, amountPaid, energySelected, startEnergy,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log("📬 POST response:", res);
+      console.log("📦 res.data:", res.data);
 
-    console.log("🧪 Starting session with:", {
-      sessionId,
-      userId,
-      deviceId,
-      transactionId: txnId,
-      startTime,
-      startDate,
-      amountPaid,
-      energySelected,
-      startEnergy,
-    });
-
-    const res = await axios.post(
-      `${process.env.REACT_APP_API_URL}/api/sessions/start`,
-      {
-        sessionId,
-        userId,
-        deviceId,
-        transactionId: txnId,
-        startTime,
-        startDate,
-        amountPaid,
-        energySelected,
-        startEnergy,
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-console.log("🛫 Sending to backend:", {
-  sessionId,
-  userId,
-  deviceId,
-  transactionId: txnId,
-  startTime,
-  startDate,
-  amountPaid,
-  energySelected,
-  startEnergy,
-});
-
-    console.log("📬 POST response:", res);       // ✅ Full response object
-    console.log("📦 res.data:", res.data);       // ✅ Data returned from backend
-
-    const newSession = { ...res.data, startTime, startDate };
-    setSession(newSession);
-    setSessionStarted(true);
-
-    localStorage.setItem("activeSession", JSON.stringify(newSession));
-    localStorage.setItem(
-      "sessionMeta",
-      JSON.stringify({ transactionId: txnId, deviceId, amountPaid, energySelected })
-    );
-
-  } catch (err) {
-    console.error("❌ Failed to start session:", err.message);
-  }
-};
-
+      const newSession = { ...res.data, startTime, startDate };
+      setSession(newSession);
+      setSessionStarted(true);
+      localStorage.setItem("activeSession", JSON.stringify(newSession));
+      localStorage.setItem(
+        "sessionMeta",
+        JSON.stringify({ transactionId: txnId, deviceId, amountPaid, energySelected })
+      );
+    } catch (err) {
+      console.error("❌ Failed to start session:", err.message);
+    }
+  };
 
   useEffect(() => {
     if (sessionStarted && connected && session?.sessionId && publish) {
       const { sessionId, userId, startTime, startDate } = session;
-
-      const command = {
-        command: "start",
-        sessionId,
-        deviceId,
-        userId,
-        startTime,
-        startDate,
-        energySelected,
-        amountPaid,
-        transactionId: txnId,
-      };
-
-      console.log("🚀 Publishing sessionCommand to ESP32:", command);
-// When we publish start‐command:
-publish(`device/${deviceId}/sessionCommand`,  
-        JSON.stringify({ command:"start", sessionId, deviceId, userId, startTime, startDate, energySelected, amountPaid, transactionId:txnId })
-);
+      console.log("🚀 Publishing sessionCommand to ESP32:", {
+        command: "start", sessionId, deviceId, userId, startTime, startDate,
+        energySelected, amountPaid, transactionId: txnId,
+      });
+      publish(
+        `device/${deviceId}/sessionCommand`,
+        JSON.stringify({
+          command: "start",
+          sessionId,
+          deviceId,
+          userId,
+          startTime,
+          startDate,
+          energySelected,
+          amountPaid,
+          transactionId: txnId,
+        })
+      );
     }
   }, [sessionStarted, session, connected, publish, deviceId, energySelected, amountPaid, txnId]);
 
   const stopSession = async (trigger = "manual") => {
     if (!session.sessionId) return;
-
     try {
       const token = localStorage.getItem("token");
       const endTime = new Date().toISOString();
-
       await axios.post(
         `${process.env.REACT_APP_API_URL}/api/sessions/stop`,
         { sessionId: session.sessionId, endTime, endTrigger: trigger },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       localStorage.removeItem("activeSession");
       localStorage.removeItem("sessionMeta");
       setSession({});
@@ -174,7 +133,6 @@ publish(`device/${deviceId}/sessionCommand`,
   const updateSessionUsage = async (energyConsumed, amountUsed) => {
     if (!session.sessionId) return;
     setSession((prev) => ({ ...prev, energyConsumed, amountUsed }));
-
     try {
       const token = localStorage.getItem("token");
       await axios.post(
@@ -221,31 +179,26 @@ function useEnergyMeter(
   const handleMQTTMessage = (topic, msg) => {
     const value = parseFloat(msg);
     if (isNaN(value)) return;
-
     if (topic.endsWith("/sensor/voltage")) {
       setVoltage(value);
     } else if (topic.endsWith("/sensor/current")) {
       setCurrent(value);
-    } else if (topic.endsWith("/device/${deviceId}/sensor/energy")) {
+    } else if (topic.endsWith(`/device/${deviceId}/sensor/energy`)) {
       if (startEnergy === null && charging) {
         setStartEnergy(value);
         localStorage.setItem(`startEnergy_${deviceId}`, value);
       }
-
       if (startEnergy !== null) {
         const delta = parseFloat((value - startEnergy).toFixed(3));
         setDeltaEnergy(delta);
         const usedAmount = parseFloat((delta * FIXED_RATE).toFixed(2));
-
         console.log("📊 Energy Update:", {
           startEnergy,
           currentEnergy: value,
           delta,
           usedAmount,
         });
-
         onUpdateSessionUsage(delta, usedAmount);
-
         if (!autoStopped && amountPaid && usedAmount >= amountPaid) {
           stopSession("auto");
           setAutoStopped(true);
@@ -265,30 +218,12 @@ function useEnergyMeter(
     return () => mqttClient.off("message", handleMQTTMessage);
   }, [mqttClient, deviceId, charging, startEnergy]);
 
-  const startCharging = () => {
-    if (connected && mqttClient && deviceId) {
-      console.log("⚡ Sending Relay ON command...");
-      publish(`device/${deviceId}/relay/set`, "ON");
-    }
-  };
-
-  const stopCharging = () => {
-    if (connected && mqttClient && deviceId) {
-      console.log("🛑 Sending Relay OFF command...");
-      publish(`device/${deviceId}/relay/set`, "OFF");
-      setCharging(false);
-      setRelayConfirmed(false);
-    }
-  };
-
   return {
     charging,
     relayConfirmed,
     deltaEnergy,
     voltage,
     current,
-    startCharging,
-    stopCharging,
     handleMQTTMessage,
   };
 }
@@ -307,7 +242,6 @@ function useDragToStop(onStop) {
       const maxLeft = track.offsetWidth - 60;
       setThumbLeft(Math.max(0, Math.min(posX, maxLeft)));
     };
-
     const stop = () => {
       if (!dragging) return;
       const track = document.getElementById("slider-track");
@@ -316,12 +250,10 @@ function useDragToStop(onStop) {
       if (percent > 70) onStop();
       else setThumbLeft(0);
     };
-
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", stop);
     window.addEventListener("touchmove", move);
     window.addEventListener("touchend", stop);
-
     return () => {
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", stop);
@@ -378,15 +310,8 @@ const SessionStatus = () => {
     deltaEnergy,
     voltage,
     current,
-    startCharging,
-    stopCharging,
+    handleMQTTMessage,
   } = energy;
-
-  useEffect(() => {
-    if (sessionStarted && connected && !charging) {
-      startCharging();
-    }
-  }, [sessionStarted, connected]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -408,10 +333,18 @@ const SessionStatus = () => {
     }));
   }, [deltaEnergy, sessionStarted]);
 
-  const { dragging, setDragging, thumbLeft } = useDragToStop(() => {
-    stopCharging();
+  const handleStop = () => {
+    if (connected && mqttClient && deviceId && session.sessionId) {
+      console.log("🛑 Sending session STOP command...");
+      publish(
+        `device/${deviceId}/sessionCommand`,
+        JSON.stringify({ command: "stop", sessionId: session.sessionId, deviceId })
+      );
+    }
     stopSession("manual");
-  });
+  };
+
+  const { dragging, setDragging, thumbLeft } = useDragToStop(handleStop);
 
   if (!session.sessionId) return <p>Loading session data...</p>;
 

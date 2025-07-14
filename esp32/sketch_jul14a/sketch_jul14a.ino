@@ -4,6 +4,7 @@
 #include <ArduinoJson.h>
 #include <PZEM004Tv30.h>
 #include "time.h"
+#include <Preferences.h>
 
 // ---------- Configuration ----------
 const char* ssid      = "RokadeRaju";
@@ -14,7 +15,7 @@ const int   mqttPort   = 8883;            // HiveMQ TLS port
 const char* mqttUser   = "pritam";
 const char* mqttPass   = "Pritam123";
 
-const String deviceId  = "EV123";
+const String deviceId  = "GLIDE03";
 const int RELAY_PIN    = 12;
 const int EMERGENCY_PIN = 14;             // active‑low button
 const int LED_R = 27, LED_G = 26, LED_B = 25;
@@ -22,11 +23,12 @@ const int LED_R = 27, LED_G = 26, LED_B = 25;
 // ---------- Globals ----------
 WiFiClientSecure net;
 MqttClient       mqtt(net);               // ArduinoMqttClient
+Preferences prefs;
 
-// PZEM on Serial2
+// PZEM on Serial2 (energy meter)
 PZEM004Tv30 pzem(Serial2, 16, 17);
 
-String topicSessionStart, topicSessionStop, topicSessionLive,
+String topicSessionCommand, topicSessionLive,
        topicSessionEnd, topicStatus, topicSessionInfo;
 
 bool   sessionActive   = false;
@@ -36,10 +38,10 @@ float  initialEnergy   = 0.0, energyConsumed = 0.0;
 struct tm timeinfo;
 unsigned long lastPublish = 0;
 
-// ---------- Forward declarations ----------
+// ---------- Function Prototypes ----------
 void connectWiFi();
 void connectMQTT();
-void onMqttMessage();
+void onMqttMessage(int messageSize);
 void publishStatus(const char* st);
 void startSession();
 void publishSessionData();
@@ -53,37 +55,58 @@ void setup() {
   pinMode(EMERGENCY_PIN, INPUT_PULLUP);
   pinMode(LED_R, OUTPUT); pinMode(LED_G, OUTPUT); pinMode(LED_B, OUTPUT);
 
-  // Topic formulation
-  topicSessionStart = "device/" + deviceId + "/session/start";
-  topicSessionStop  = "device/" + deviceId + "/session/stop";
-  topicSessionLive  = "device/" + deviceId + "/session/live";
-  topicSessionEnd   = "device/" + deviceId + "/session/end";
-  topicStatus       = "device/" + deviceId + "/status";
-  topicSessionInfo  = "device/" + deviceId + "/session/info";
-  topicSessionInfo  = "device/" + deviceId + "/session/info";
-  
-  connectWiFi();
-  configTime(0, 0, "pool.ntp.org");        // UTC
+  // Initialize Preferences (EEPROM)
+  prefs.begin("session", false);
 
-  net.setInsecure();                       // dev‑only TLS
+  // Check for unfinished session in EEPROM
+  bool prevActive = prefs.getBool("sessionActive", false);
+  if (prevActive) {
+    sessionId = prefs.getString("sessionId", "");
+    userId = prefs.getString("userId", "");
+    transactionId = prefs.getString("transactionId", "");
+    energySelected = prefs.getFloat("energySelected", 0.0);
+    amountPaid = prefs.getFloat("amountPaid", 0.0);
+    initialEnergy = prefs.getFloat("initialEnergy", 0.0);
+    sessionActive = true;
+    Serial.println("Restored session from EEPROM: " + sessionId);
+    // Restore device state to occupied
+    digitalWrite(RELAY_PIN, HIGH);
+    publishStatus("occupied");
+    updateLED("occupied");
+    // Publish relay state ON (so frontend knows)
+    mqtt.beginMessage(("device/" + deviceId + "/relay/state").c_str(), 2, true, 1);
+    mqtt.write("ON");
+    mqtt.endMessage();
+  }
+
+  // MQTT topics
+  topicSessionCommand = "device/" + deviceId + "/sessionCommand";
+  topicSessionLive    = "device/" + deviceId + "/session/live";
+  topicSessionEnd     = "device/" + deviceId + "/session/end";
+  topicStatus         = "device/" + deviceId + "/status";
+  topicSessionInfo    = "device/" + deviceId + "/session/info";
+
+  connectWiFi();
+  configTime(0, 0, "pool.ntp.org");        // UTC time
+
+  net.setInsecure();                       // TLS (insecure)
   connectMQTT();
+
+  mqtt.subscribe(topicSessionCommand.c_str(), 1);
+  Serial.println("Subscribed to session command topic.");
 
   publishStatus("available");
   updateLED("available");
 }
 
-// ---------- Main loop ----------
+// ---------- Main Loop ----------
 void loop() {
-  // keep connections alive
+  // Keep connections alive
   if (WiFi.status() != WL_CONNECTED) connectWiFi();
   if (!mqtt.connected())             connectMQTT();
   mqtt.poll();
 
-  // Handle any queued messages
-// while (mqtt.parseMessage()) onMqttMessage();
-
-
-  // Emergency stop
+  // Emergency stop (button pressed)
   if (digitalRead(EMERGENCY_PIN) == LOW) {
     Serial.println("!! EMERGENCY STOP PRESSED !!");
     publishStatus("faulty");
@@ -91,12 +114,13 @@ void loop() {
     if (sessionActive) endSession();
   }
 
-  // Active session periodic work
+  // During active session, publish live data periodically
   if (sessionActive) {
-    if (millis() - lastPublish >= 5000) {   // every 5 s
+    if (millis() - lastPublish >= 5000) {   // every 5 seconds
       publishSessionData();
       lastPublish = millis();
     }
+    // Auto-stop if energy target reached
     if (energyConsumed >= energySelected && energySelected > 0) {
       Serial.println("Energy target reached.");
       endSession();
@@ -104,18 +128,18 @@ void loop() {
   }
 }
 
-// ---------- Wi‑Fi ----------
+// ---------- Wi-Fi Setup ----------
 void connectWiFi() {
-  Serial.printf("Connecting to Wi‑Fi %s", ssid);
+  Serial.printf("Connecting to Wi-Fi %s", ssid);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     Serial.print('.'); delay(500);
   }
-  Serial.print("\nIP: "); Serial.println(WiFi.localIP());
+  Serial.print("\\nIP: "); Serial.println(WiFi.localIP());
 }
 
-// ---------- MQTT ----------
+// ---------- MQTT Setup ----------
 void connectMQTT() {
   Serial.print("Connecting MQTT ... ");
   mqtt.setId(("ESP32-" + deviceId).c_str());
@@ -127,37 +151,40 @@ void connectMQTT() {
     Serial.print('.'); delay(1000);
   }
   Serial.println("connected.");
-
-  mqtt.subscribe(topicSessionStart.c_str(), 1);
-  mqtt.subscribe(topicSessionStop.c_str(), 1);
-  Serial.println("Subscribed to session topics.");
 }
 
-// ---------- MQTT message handler ----------
+// ---------- MQTT Message Callback ----------
 void onMqttMessage(int messageSize) {
   String tpc = mqtt.messageTopic();
   String msg;
   while (mqtt.available()) { msg += (char)mqtt.read(); }
 
-  Serial.printf("⮕ %s : %s\n", tpc.c_str(), msg.c_str());
+  Serial.printf("⮕ %s : %s\\n", tpc.c_str(), msg.c_str());
 
   StaticJsonDocument<256> doc;
-  if (deserializeJson(doc, msg)) { Serial.println("JSON parse error."); return; }
+  DeserializationError err = deserializeJson(doc, msg);
+  if (err) { Serial.println("JSON parse error."); return; }
 
-  if (tpc == topicSessionStart) {
-    userId        = doc["userId"] | "";
-    transactionId = doc["transactionId"] | "";
-    energySelected = doc["energySelected"] | 0.0;
-    amountPaid     = doc["amountPaid"] | 0.0;
-    Serial.println("Session START cmd OK.");
-    startSession();
-  } else if (tpc == topicSessionStop && sessionActive) {
-    Serial.println("Session STOP cmd.");
-    endSession();
+  // Handle start/stop commands
+  if (tpc == topicSessionCommand) {
+    const char* cmd = doc["command"] | "";
+    if (strcmp(cmd, "start") == 0) {
+      userId        = doc["userId"] | "";
+      transactionId = doc["transactionId"] | "";
+      energySelected = doc["energySelected"] | 0.0;
+      amountPaid     = doc["amountPaid"] | 0.0;
+      sessionId      = doc["sessionId"] | "";
+      String startTime = doc["startTime"] | "";
+      Serial.println("Session START command received.");
+      startSession();
+    } else if (strcmp(cmd, "stop") == 0 && sessionActive) {
+      Serial.println("Session STOP command received.");
+      endSession();
+    }
   }
 }
 
-// ---------- Helpers ----------
+// ---------- Generate ISO Timestamp ----------
 void isoTimestamp(char* buf, size_t len) {
   getLocalTime(&timeinfo);
   snprintf(buf, len, "%04d-%02d-%02dT%02d:%02d:%02dZ",
@@ -165,7 +192,7 @@ void isoTimestamp(char* buf, size_t len) {
            timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 }
 
-// ---------- Status publisher ----------
+// ---------- Publish Device Status ----------
 void publishStatus(const char* st) {
   StaticJsonDocument<128> doc;
   doc["deviceId"] = deviceId;
@@ -175,13 +202,13 @@ void publishStatus(const char* st) {
   mqtt.beginMessage(topicStatus.c_str(), L, true, 1);
   mqtt.write((uint8_t*)payload, L);
   mqtt.endMessage();
-  Serial.printf("⇢ status=%s\n", st);
+  Serial.printf("⇢ status=%s\\n", st);
 }
 
-// ---------- Start session ----------
+// ---------- Start Session Logic ----------
 void startSession() {
   char ts[30];  isoTimestamp(ts, sizeof(ts));
-  sessionId     = deviceId + "_" + String(time(nullptr));
+  // Assume sessionId, userId, etc. already set from payload
   sessionActive = true;
   initialEnergy = pzem.energy();
   energyConsumed = 0;
@@ -190,7 +217,12 @@ void startSession() {
   publishStatus("occupied");
   updateLED("occupied");
 
-  // Build and send session‑info
+  // Publish relay state ON for frontend
+  mqtt.beginMessage(("device/" + deviceId + "/relay/state").c_str(), 2, true, 1);
+  mqtt.write("ON");
+  mqtt.endMessage();
+
+  // Build and send session-info JSON
   StaticJsonDocument<256> info;
   info["deviceId"]  = deviceId;
   info["sessionId"] = sessionId;
@@ -198,16 +230,26 @@ void startSession() {
   info["transactionId"] = transactionId;
   info["energy_kWh"]= energySelected;
   info["amountPaid"]= amountPaid;
-  info["startTime"] = ts;
+  info["startTime"] = ts;  // ISO start time
   char buf[256]; size_t L = serializeJson(info, buf);
 
   mqtt.beginMessage(topicSessionInfo.c_str(), L, true, 1);
   mqtt.write((uint8_t*)buf, L);
   mqtt.endMessage();
-  Serial.println("⇢ session‑start info sent.");
+  Serial.println("⇢ session-start info sent.");
+
+  // Save session details to EEPROM (Preferences)
+  prefs.putBool("sessionActive", true);
+  prefs.putString("sessionId", sessionId);
+  prefs.putString("userId", userId);
+  prefs.putString("transactionId", transactionId);
+  prefs.putFloat("initialEnergy", initialEnergy);
+  prefs.putFloat("energySelected", energySelected);
+  prefs.putFloat("amountPaid", amountPaid);
+  Serial.println("Saved session data to EEPROM.");
 }
 
-// ---------- Live telemetry ----------
+// ---------- Publish Live Telemetry -----------
 void publishSessionData() {
   float voltage = pzem.voltage();
   float current = pzem.current();
@@ -234,14 +276,19 @@ void publishSessionData() {
   mqtt.write((uint8_t*)payload, L);
   mqtt.endMessage();
 
-  Serial.printf("Live: E=%.3f kWh P=%.1f W\n", energyConsumed, power);
+  Serial.printf("Live: E=%.3f kWh  P=%.1f W\\n", energyConsumed, power);
 }
 
-// ---------- End session ----------
+// ---------- End Session Logic -------------
 void endSession() {
   if (!sessionActive) return;
   sessionActive = false;
   digitalWrite(RELAY_PIN, LOW);
+
+  // Publish relay state OFF for frontend
+  mqtt.beginMessage(("device/" + deviceId + "/relay/state").c_str(), 3, true, 1);
+  mqtt.write("OFF");
+  mqtt.endMessage();
 
   char ts[30]; isoTimestamp(ts, sizeof(ts));
   StaticJsonDocument<192> fin;
@@ -254,17 +301,21 @@ void endSession() {
   mqtt.beginMessage(topicSessionEnd.c_str(), L, true, 1);
   mqtt.write((uint8_t*)buf, L);
   mqtt.endMessage();
-  Serial.printf("⇢ session end, %.3f kWh total.\n", energyConsumed);
+  Serial.printf("⇢ session ended, %.3f kWh total.\\n", energyConsumed);
 
   publishStatus("available");
   updateLED("available");
+
+  // Clear stored session from EEPROM
+  prefs.clear();
+  Serial.println("Cleared session data from EEPROM.");
 }
 
-// ---------- LED helper ----------
+// ---------- LED Helper ----------
 void updateLED(const char* st) {
   if (!strcmp(st, "available")) {          // aqua
     digitalWrite(LED_R, LOW); digitalWrite(LED_G, HIGH); digitalWrite(LED_B, HIGH);
-  } else if (!strcmp(st, "occupied")) {    // green blink simulated via toggle
+  } else if (!strcmp(st, "occupied")) {    // green
     digitalWrite(LED_R, LOW); digitalWrite(LED_G, HIGH); digitalWrite(LED_B, LOW);
   } else {                                 // faulty = red
     digitalWrite(LED_R, HIGH); digitalWrite(LED_G, LOW); digitalWrite(LED_B, LOW);
