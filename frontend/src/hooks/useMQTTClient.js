@@ -59,6 +59,10 @@ client.on("message", (topic, message) => {
 
     client.on("error", handleError);
     client.on("close", handleClose);
+    client.on("connect", handleConnect);
+    client.on("message", handleMessage);
+    client.on("error", handleError);
+    client.on("close", handleClose);
 
     return () => {
       console.log("🧹 Cleaning up MQTT client...");
@@ -72,7 +76,7 @@ client.on("message", (topic, message) => {
 
   const publish = (topic, message) => {
     if (clientRef.current?.connected) {
-      clientRef.current.publish(topic, message);
+      clientRef.current.publish(topic, message, { qos: 1 });
     } else {
       console.warn("⚠️ Cannot publish — MQTT not connected");
     }
