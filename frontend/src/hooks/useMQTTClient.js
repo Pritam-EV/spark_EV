@@ -18,6 +18,9 @@ const OPTIONS = {
   // mqtt.js will default to the correct values for MQTT v3.1.1
 };
 
+export default function useMQTTClient(deviceId, onMessage) {
+  const clientRef = useRef();
+  const [connected, setConnected] = useState(false);
 
 useEffect(() => {
   if (!deviceId) return;
@@ -54,10 +57,18 @@ useEffect(() => {
     onMessage(topic, message.toString());
   });
 
-  clientRef.current = client;
-  setMqttClient(client);
+
 
   return () => {
     client.end(true);
   };
 }, [deviceId, onMessage]);
+
+
+  const publish = (topic, msg) => {
+    if (clientRef.current?.connected) 
+      clientRef.current.publish(topic, msg, { qos:1, retain:false });
+  };
+
+  return { mqttClient: clientRef.current, connected, publish };
+}
