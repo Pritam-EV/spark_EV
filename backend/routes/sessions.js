@@ -47,7 +47,7 @@
 
 
   // ✅ Start Session (Triggered after payment success)
-router.post("/start", auth, async (req, res) => {
+router.post("/start", authMiddleware, async (req, res) => {
   const {
     sessionId, deviceId, transactionId,
     startTime, startDate,
