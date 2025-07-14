@@ -278,7 +278,7 @@ const SessionStatus = () => {
 
   const [processMessage, setProcessMessage] = useState(() => () => {});
   const { mqttClient, connected, publish } = useMQTTClient(deviceId, processMessage);
-
+  const sentRef = useRef(false);      
   const {
     session,
     setSession,
@@ -323,6 +323,37 @@ const SessionStatus = () => {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [charging]);
+
+useEffect(() => {
+    if (
+      !sentRef.current &&              // not yet sent
+      sessionStarted &&                // session created in backend
+      connected &&                     // MQTT up
+      publish &&                       // have publish fn
+      session?.sessionId               // have id
+    ) {
+      const { sessionId, userId, startTime, startDate } = session;
+
+      const payload = {
+        command:        "start",
+        sessionId,      // frontend‑generated id
+        deviceId,       // charger id
+        userId,
+        startTime,
+        startDate,
+        energySelected,
+        amountPaid,
+        transactionId:  txnId
+      };
+
+      console.log("🚀 1× sessionCommand → ESP32:", payload);
+      publish(`device/${deviceId}/sessionCommand`, JSON.stringify(payload), { qos: 1 });
+
+      sentRef.current = true;          // ⚑ mark as sent
+    }
+  }, [sessionStarted, connected, publish, session, deviceId,
+      energySelected, amountPaid, txnId]);
+
 
   useEffect(() => {
     if (!sessionStarted || deltaEnergy == null) return;

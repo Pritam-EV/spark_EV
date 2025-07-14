@@ -75,7 +75,7 @@ void setup() {
     updateLED("occupied");
     // Publish relay state ON (so frontend knows)
     mqtt.beginMessage(("device/" + deviceId + "/relay/state").c_str(), 2, true, 1);
-    mqtt.write("ON");
+    mqtt.write((const uint8_t *)"ON", 2); 
     mqtt.endMessage();
   }
 
@@ -144,6 +144,7 @@ void connectMQTT() {
   Serial.print("Connecting MQTT ... ");
   mqtt.setId(("ESP32-" + deviceId).c_str());
   mqtt.setUsernamePassword(mqttUser, mqttPass);
+  mqtt.subscribe(("device/" + deviceId + "/sessionCommand").c_str(), 1); 
   mqtt.setCleanSession(false);
   mqtt.onMessage(onMqttMessage);           // register callback
 
@@ -154,35 +155,63 @@ void connectMQTT() {
 }
 
 // ---------- MQTT Message Callback ----------
-void onMqttMessage(int messageSize) {
-  String tpc = mqtt.messageTopic();
-  String msg;
-  while (mqtt.available()) { msg += (char)mqtt.read(); }
+// ---------- MQTT Message Callback ----------
+void onMqttMessage(int /*messageSize*/)          // size not needed
+{
+  // --- copy incoming payload ---
+  String topic = mqtt.messageTopic();
+  String json;
+  while (mqtt.available()) json += char(mqtt.read());
 
-  Serial.printf("⮕ %s : %s\\n", tpc.c_str(), msg.c_str());
+  Serial.printf("⮕ %s : %s\n", topic.c_str(), json.c_str());
 
-  StaticJsonDocument<256> doc;
-  DeserializationError err = deserializeJson(doc, msg);
-  if (err) { Serial.println("JSON parse error."); return; }
+  // We only care about **device/<id>/sessionCommand**
+  if (topic != topicSessionCommand) return;      // anything else → ignore
 
-  // Handle start/stop commands
-  if (tpc == topicSessionCommand) {
-    const char* cmd = doc["command"] | "";
-    if (strcmp(cmd, "start") == 0) {
-      userId        = doc["userId"] | "";
-      transactionId = doc["transactionId"] | "";
-      energySelected = doc["energySelected"] | 0.0;
-      amountPaid     = doc["amountPaid"] | 0.0;
-      sessionId      = doc["sessionId"] | "";
-      String startTime = doc["startTime"] | "";
-      Serial.println("Session START command received.");
-      startSession();
-    } else if (strcmp(cmd, "stop") == 0 && sessionActive) {
-      Serial.println("Session STOP command received.");
-      endSession();
+  // --- decode JSON ---
+  StaticJsonDocument<256> cmd;
+  if (deserializeJson(cmd, json)) {
+    Serial.println("⚠️  sessionCommand JSON parse error – ignored");
+    return;
+  }
+
+  const char* action = cmd["command"] | "";
+
+  /*––––––––––––––––––––  START  ––––––––––––––––––––*/
+  if (!strcmp(action, "start")) {
+
+    if (sessionActive) {                         // already charging
+      Serial.println("⚠️  duplicate start command – ignored");
+      return;
     }
+
+    /* Extract parameters sent from the front‑end */
+    userId         = cmd["userId"]        | "";
+    transactionId  = cmd["transactionId"] | "";
+    energySelected = cmd["energySelected"]| 0.0;
+    amountPaid     = cmd["amountPaid"]    | 0.0;
+    sessionId      = cmd["sessionId"]     | "";
+
+    Serial.println("✅ sessionCommand → START");
+    startSession();                              // <- turns relay ON
+  }
+
+  /*––––––––––––––––––––  STOP  ––––––––––––––––––––*/
+  else if (!strcmp(action, "stop")) {
+    if (!sessionActive) {
+      Serial.println("⚠️  stop command while no session – ignored");
+      return;
+    }
+    Serial.println("✅ sessionCommand → STOP");
+    endSession();                                // <- turns relay OFF
+  }
+
+  /*––––––––––––––––––––  UNKNOWN  –––––––––––––––––*/
+  else {
+    Serial.printf("⚠️  unknown command \"%s\" – ignored\n", action);
   }
 }
+
 
 // ---------- Generate ISO Timestamp ----------
 void isoTimestamp(char* buf, size_t len) {
@@ -219,7 +248,7 @@ void startSession() {
 
   // Publish relay state ON for frontend
   mqtt.beginMessage(("device/" + deviceId + "/relay/state").c_str(), 2, true, 1);
-  mqtt.write("ON");
+  mqtt.write((const uint8_t *)"ON", 2); 
   mqtt.endMessage();
 
   // Build and send session-info JSON
@@ -287,7 +316,7 @@ void endSession() {
 
   // Publish relay state OFF for frontend
   mqtt.beginMessage(("device/" + deviceId + "/relay/state").c_str(), 3, true, 1);
-  mqtt.write("OFF");
+  mqtt.write((const uint8_t *)"OFF", 3);
   mqtt.endMessage();
 
   char ts[30]; isoTimestamp(ts, sizeof(ts));
