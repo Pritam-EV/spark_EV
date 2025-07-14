@@ -29,102 +29,88 @@ function startMqttSubscriber() {
     });
   });
 
-  client.on('message', async (topic, payload) => {
+  client.on("message", async (topic, buf) => {
+    let msg;
     try {
-      const msg = JSON.parse(payload.toString());
-      const [, deviceId, subTopic] = topic.split('/'); // e.g. ['device','GLIDE03','status']
-
-      switch (subTopic) {
-        case 'sessionCommand':
-          // only handle start commands from charger
-          if (msg.command === 'start') {
-            // create session if not exists
-            await Session.updateOne(
-              { sessionId: msg.sessionId },
-              {
-                $setOnInsert: {
-                  sessionId: msg.sessionId,
-                  deviceId,
-                  transactionId: msg.transactionId,
-                  userId: msg.userId || null,
-                  startTime: new Date(msg.startTime),
-                  startDate: msg.startDate,
-                  energySelected: msg.energySelected,
-                  amountPaid: msg.amountPaid,
-                  status: 'active',
-                }
-              },
-              { upsert: true }
-            );
-            // update device to occupied
-            await Device.updateOne(
-              { device_id: deviceId },
-              { status: 'Occupied', current_session_id: (await Session.findOne({ sessionId: msg.sessionId }))._id }
-            );
-          }
-          break;
-
-        case 'session':
-          // this is 'session/live' or 'session/end' depending on second token
-          if (topic.endsWith('/session/live')) {
-            await Session.updateOne(
-              { sessionId: msg.sessionId },
-              {
-                energyConsumed: msg.energy_kWh,
-                // optionally store power & timestamp in a sub‐document array
-                $push: { telemetry: { power_W: msg.power_W, timestamp: new Date(msg.timestamp) } }
-              }
-            );
-          } else if (topic.endsWith('/session/end')) {
-            await Session.updateOne(
-              { sessionId: msg.sessionId },
-              {
-                endTime: new Date(msg.endTime || msg.timestamp),
-                energyConsumed: msg.energy_kWh,
-                status: 'completed',
-                endTrigger: msg.endTrigger || 'auto'
-              }
-            );
-            // free the device
-            const sess = await Session.findOne({ sessionId: msg.sessionId });
-            await Device.updateOne(
-              { device_id: sess.deviceId },
-              { status: 'Available', current_session_id: null }
-            );
-          }
-          break;
-
-        case 'status':
-          // msg = { deviceId, status }
-          await Device.updateOne(
-            { device_id: deviceId },
-            { status: msg.status.charAt(0).toUpperCase() + msg.status.slice(1) }
-          );
-          break;
-
-        case 'session':
-          // handled above
-          break;
-
-        case 'session/info':
-          // initial session‐info metadata
-          await Session.updateOne(
-            { sessionId: msg.sessionId },
-            {
-              startEnergy:   msg.energy_kWh,
-              amountPaid:    msg.amountPaid,
-              userId:        msg.userId || undefined,
-            }
-          );
-          break;
-      }
-      console.log(`✅ [${topic}] processed`);
+      msg = JSON.parse(buf.toString());
     } catch (e) {
-      console.error(`❌ Error processing MQTT ${topic}:`, e);
+      return console.error("❌ Invalid JSON on", topic);
+    }
+
+    const parts = topic.split("/");
+    const deviceId = parts[1];
+    const section  = parts[2];      // "session" or "status"
+    const action   = parts[3];      // e.g. "info", "live", "end" (or undefined for status)
+
+    try {
+      if (section === "session" && action === "info") {
+        // Create or upsert the Session document, including userId
+        const upd = {
+          sessionId:      msg.sessionId,
+          deviceId,
+          transactionId:  msg.transactionId,
+          startTime:      new Date(msg.startTime),
+          startDate:      msg.startTime.split("T")[0],
+          energySelected: msg.energy_kWh,
+          amountPaid:     msg.amountPaid,
+          status:         "active",
+        };
+        // Only set userId if provided
+        if (msg.userId) {
+          try {
+            upd.userId = mongoose.Types.ObjectId(msg.userId);
+          } catch {}
+        }
+
+        const sessionDoc = await Session.findOneAndUpdate(
+          { sessionId: msg.sessionId },
+          { $setOnInsert: upd },
+          { upsert: true, new: true }
+        );
+
+        // Mark the device as occupied
+        await Device.findOneAndUpdate(
+          { device_id: deviceId },
+          { status: "Occupied", current_session_id: sessionDoc._id }
+        );
+      }
+      else if (section === "session" && action === "live") {
+        await Session.updateOne(
+          { sessionId: msg.sessionId },
+          { energyConsumed: msg.energy_kWh }
+        );
+      }
+      else if (section === "session" && action === "end") {
+        const sess = await Session.findOneAndUpdate(
+          { sessionId: msg.sessionId },
+          {
+            endTime:        new Date(msg.endTime || msg.timestamp),
+            energyConsumed: msg.energy_kWh,
+            status:         "completed",
+            endTrigger:     msg.endTrigger || "auto",
+          },
+          { new: true }
+        );
+        // Free up the device
+        await Device.findOneAndUpdate(
+          { device_id: sess.deviceId },
+          { status: "Available", current_session_id: null }
+        );
+      }
+      else if (section === "status") {
+        await Device.updateOne(
+          { device_id: deviceId },
+          { status: msg.status }
+        );
+      }
+
+      console.log(`✅ Processed ${topic}`);
+    } catch (err) {
+      console.error(`❌ Error handling ${topic}:`, err);
     }
   });
 
-  client.on('error', err => console.error('❌ MQTT client error:', err));
+  client.on("error", err => console.error("❌ MQTT client error:", err));
 }
 
 module.exports = startMqttSubscriber;

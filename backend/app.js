@@ -7,6 +7,8 @@ const deviceRoutes = require("./routes/devices");
 const sessionRoutes = require("./routes/sessions");
 const Device = require("./models/device");
 const Session = require("./models/session");  
+const startMqttSubscriber = require("./mqttSubscriber");
+
 require("dotenv").config();
 dotenv.config();
 const app = express();
@@ -76,8 +78,8 @@ app.get("/api/getDevice", async (req, res) => {
 });
 
 
+startMqttSubscriber();
 
-  require('./mqttSubscriber')();
 // ✅ Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
