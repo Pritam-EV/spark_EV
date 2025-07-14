@@ -350,7 +350,7 @@ useEffect(() => {
       command:        "start",
       sessionId,
       deviceId,
-      userId:  session.userId,
+      userId,
       startTime,
       startDate,
       energySelected,
