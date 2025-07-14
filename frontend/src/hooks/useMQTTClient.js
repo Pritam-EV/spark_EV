@@ -14,8 +14,14 @@ export default function useMQTTClient(deviceId, onMessage) {
 useEffect(() => {
     if (!deviceId) return;
 
-    console.log("▶️ Connecting to", CONNECTION_URL);
-    const client = mqtt.connect(CONNECTION_URL, OPTIONS);
+    const client = mqtt.connect(MQTT_BROKER_URL, {
+      username: MQTT_USER,
+      password: MQTT_PASSWORD,
+      rejectUnauthorized: false,
+      reconnectPeriod: 2000,
+    });
+
+    clientRef.current = client;
 
     client.on("connect", () => {
       console.log("✅ MQTT WS connected");
