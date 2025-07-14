@@ -1,3 +1,4 @@
+// src/components/SessionPage.js
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import {
@@ -21,31 +22,38 @@ const SessionPage = () => {
   const [activeSessions, setActiveSessions] = useState([]);
   const [pastSessions, setPastSessions] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchSessions();
-  }, []);
+  }, []); // only once on mount
 
   const fetchSessions = async () => {
     setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.warn("🔒 No auth token – redirecting to login");
+      return navigate("/login");
+    }
 
+    try {
       const res = await axios.get(
         "https://spark-ev-backend.onrender.com/api/sessions/user-sessions",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-
-      const { activeSessions = [], pastSessions = [] } = res.data;
-      setActiveSessions(activeSessions);
-      setPastSessions(pastSessions);
+      // backend returns { activeSessions: [...], pastSessions: [...] }
+      setActiveSessions(res.data.activeSessions || []);
+      setPastSessions(res.data.pastSessions || []);
     } catch (err) {
-      console.error("Error fetching sessions:", err);
+      console.error(
+        "❌ Error fetching sessions:",
+        err.response?.status,
+        err.response?.data || err.message
+      );
+      // if unauthorized, kick to login
+      if (err.response?.status === 401) navigate("/login");
     } finally {
       setLoading(false);
     }
