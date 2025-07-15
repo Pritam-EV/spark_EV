@@ -8,10 +8,11 @@ import Home from "./components/Home";
 import Profile from "./components/Profile";
 import SessionPage from "./components/SessionPage";
 import ChargingOptions from "./components/ChargingOptions";
-import SessionStatus from "./components/SessionStatus";
 import PrivateRoute from "./components/PrivateRoute";
 import QRScanner from "./components/QRScanner";
 import SessionSummary from "./components/SessionSummary";
+import SessionStart from "./components/SessionStart";
+import LiveSession from "./components/LiveSession";
 
 const AppContent = () => {
   const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem("splashShown"));
@@ -49,11 +50,9 @@ const AppContent = () => {
       <Route path="/sessions" element={<PrivateRoute><SessionPage /></PrivateRoute>} />
       <Route path="/qr-scanner" element={<PrivateRoute><QRScanner /></PrivateRoute>} />
       <Route path="/charging-options/:device_id" element={<PrivateRoute><ChargingOptions /></PrivateRoute>} />
-      <Route path="/session-status" element={<PrivateRoute><SessionStatus /></PrivateRoute>} />
-      <Route path="/session-status/:transactionId" element={<PrivateRoute><SessionStatus /></PrivateRoute>} />
       <Route path="/session-summary" element={<SessionSummary />} />
-      <Route path="/session/:sessionId" element={<PrivateRoute><SessionStatus /></PrivateRoute>} />
-
+      <Route path="/session-start/:transactionId" element={<PrivateRoute><SessionStart /></PrivateRoute>} />
+      <Route path="/live-session/:sessionId" element={<PrivateRoute><LiveSession /></PrivateRoute>} />
 
       {/* Default Redirect */}
       <Route path="*" element={<Navigate to="/home" />} />

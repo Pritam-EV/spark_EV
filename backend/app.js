@@ -1,89 +1,89 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const authRoutes = require("./routes/auth");
-const deviceRoutes = require("./routes/devices");
+// app.js
+
+const express   = require("express");
+const mongoose  = require("mongoose");
+const cors      = require("cors");
+const dotenv    = require("dotenv");
+
+// Load env vars
+dotenv.config();
+
+// Route handlers
+const authRoutes    = require("./routes/auth");
+const deviceRoutes  = require("./routes/devices");
 const sessionRoutes = require("./routes/sessions");
-const Device = require("./models/device");
-const Session = require("./models/session");  
+
+// MQTT Subscriber (if you still need it)
 const startMqttSubscriber = require("./mqttSubscriber");
 
-require("dotenv").config();
-dotenv.config();
 const app = express();
-const CLIENT_URL = [
+
+// ─── MIDDLEWARE ────────────────────────────────────────────────────────────────
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// CORS: allow your frontend origins
+const CLIENT_URLS = [
   "http://localhost:3000",
-  "https://ornate-profiterole-873549.netlify.app", // your frontend live URL
+  "https://ornate-profiterole-873549.netlify.app",
 ];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || CLIENT_URLS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 
+// Serve static assets (e.g. your SVG/clipart for SessionStart page):
+app.use(express.static("public"));
 
-app.use(express.json()); // Ensure this is present!
-app.use(express.urlencoded({ extended: true })); 
-app.use(
-  cors({
-    origin: CLIENT_URL,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-// ✅ MongoDB Connection (Using Environment Variables)
+// ─── DATABASE ────────────────────────────────────────────────────────────────
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch((error) => console.error("❌ MongoDB Connection Error:", error));
+  .catch(err => console.error("❌ MongoDB Connection Error:", err.message));
 
-// ✅ Routes
+// ─── ROUTES ────────────────────────────────────────────────────────────────────
+// Authentication
 app.use("/api/auth", authRoutes);
+
+// Devices (location, charger type, rate)
 app.use("/api/devices", deviceRoutes);
+
+// Sessions (start, stop, by-transaction, by-sessionId, etc.)
 app.use("/api/sessions", sessionRoutes);
-app.use("/api/auth", require("./routes/auth"));
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin || CLIENT_URL.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-
-
-
-
-// ✅ Get session details
+// Legacy GET endpoint (optional; can remove if you use `/api/sessions/by-transaction`)
 app.get("/api/getDevice", async (req, res) => {
   try {
     const { transactionId } = req.query;
-    if (!transactionId) return res.status(400).json({ error: "Transaction ID is required" });
-
-    const session = await Session.findOne({ transactionId });
-    if (!session) return res.status(404).json({ error: "Transaction ID not found" });
-
-    res.status(200).json(session);
-  } catch (error) {
-    console.error("Error fetching session:", error);
+    if (!transactionId) {
+      return res.status(400).json({ error: "Transaction ID is required" });
+    }
+    const session = await require("./models/session").findOne({ transactionId });
+    if (!session) {
+      return res.status(404).json({ error: "Transaction ID not found" });
+    }
+    res.json(session);
+  } catch (err) {
+    console.error("Error fetching session:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-
+// Start your MQTT subscriber after HTTP is running
 startMqttSubscriber();
 
-// ✅ Start Server
+// ─── START SERVER ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  // start the MQTT subscriber once HTTP is up:
-
 });

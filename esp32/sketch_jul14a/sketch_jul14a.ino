@@ -283,13 +283,13 @@ void publishSessionData() {
   float voltage = pzem.voltage();
   float current = pzem.current();
   float power   = pzem.power();
-  float eNow    = pzem.energy();
+  float currentEnergy    = pzem.energy();
   if (isnan(voltage) || isnan(current)) {
     Serial.println("PZEM read error!");
     publishStatus("faulty");
     return;
   }
-  energyConsumed = eNow - initialEnergy;
+  energyConsumed = currentEnergy - initialEnergy;
 
   char ts[30]; isoTimestamp(ts, sizeof(ts));
   StaticJsonDocument<256> live;
@@ -297,6 +297,8 @@ void publishSessionData() {
   live["sessionId"]  = sessionId;
   live["energy_kWh"] = energyConsumed;
   live["power_W"]    = power;
+  live["voltage_V"]    = voltage;
+  live["current_A"]    = current;
   live["timestamp"]  = ts;
   char payload[256]; size_t L = serializeJson(live, payload);
 

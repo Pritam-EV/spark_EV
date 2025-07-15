@@ -1,18 +1,13 @@
-const Session = require("../models/session");  // ✅ Import Session model
-const User = require("../models/User");
-const jwt = require("jsonwebtoken");
-const { OAuth2Client } = require("google-auth-library");
-require("dotenv").config();
+const Session = require("../models/session");
+const Device = require("../models/device");
 
-const JWT_SECRET = process.env.JWT_SECRET;
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const client = new OAuth2Client(GOOGLE_CLIENT_ID);
-
-// ✅ Create session from ESP32 device (or frontend after Razorpay)
+/**
+ * @desc   Start a new charging session
+ * @route  POST /api/sessions/start
+ * @access Private
+ */
 const startSession = async (req, res) => {
   try {
-    console.log("🔹 Full `req.body` received in backend:", req.body);
-
     const {
       sessionId,
       deviceId,
@@ -21,85 +16,161 @@ const startSession = async (req, res) => {
       startDate,
       energySelected,
       amountPaid,
-      userId, // optional
+      startEnergy
     } = req.body;
 
-    // ✅ Validate required fields
-    if (!sessionId || !deviceId || !transactionId || !startTime || !startDate  || energySelected === undefined || amountPaid === undefined) {
-      return res.status(400).json({ message: "Missing required fields" });
+    const userId = req.user ? req.user.userId : null;
+
+    // Validate required fields
+    if (!sessionId || !deviceId || !transactionId || !startTime || !startDate || energySelected === undefined || amountPaid === undefined) {
+      return res.status(400).json({ error: "Missing required fields." });
     }
 
-    // ✅ Avoid duplicate transactions
-    const existingSession = await Session.findOne({ transactionId });
-    if (existingSession) {
-      return res.status(409).json({ message: "Session already exists for this transaction" });
+    // Check duplicate transaction
+    if (await Session.findOne({ transactionId })) {
+      return res.status(409).json({ error: "Transaction already exists." });
     }
 
+    // Check device availability
+    const device = await Device.findOne({ device_id: deviceId });
+    if (!device) return res.status(404).json({ error: "Device not found." });
+    if (device.status === "Occupied") {
+      return res.status(409).json({ error: "Device is currently occupied." });
+    }
+
+    // Create session
     const newSession = new Session({
       sessionId,
       deviceId,
       transactionId,
+      userId,
       startTime: new Date(startTime),
       startDate,
       energySelected,
       amountPaid,
-      userId: userId || null, // Optional (null if not passed)
+      startEnergy: startEnergy || null,
+      status: "active",
     });
-
     await newSession.save();
 
-    console.log("✅ New session created:", newSession.sessionId);
-    res.status(201).json({ message: "Session started successfully", sessionId: newSession.sessionId });
-  } catch (error) {
-    console.error("❌ Error starting session:", error.message);
-    res.status(500).json({ message: "Failed to start session" });
+    // Update device status
+    device.status = "Occupied";
+    device.current_session_id = newSession._id;
+    await device.save();
+
+    res.status(201).json({ message: "Session started successfully.", session: newSession });
+  } catch (err) {
+    console.error("Error starting session:", err);
+    res.status(500).json({ error: "Failed to start session." });
   }
 };
 
-
-
-module.exports = { startSession };
-
-// POST /api/sessions/end
+/**
+ * @desc   End an active charging session
+ * @route  POST /api/sessions/stop
+ * @access Private
+ */
 const endSession = async (req, res) => {
   try {
-    const {
-      sessionId,
-      endTime,
-      currentEnergy,
-      deltaEnergy,
-      amountUsed,
-      endTrigger,
-      deviceId,
-    } = req.body;
+    const { sessionId, endTime, endTrigger, currentEnergy, deltaEnergy, amountUsed, deviceId } = req.body;
 
-    if (!sessionId || !endTime || !currentEnergy || !deltaEnergy || !amountUsed || !endTrigger) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!sessionId || !endTime || !endTrigger) {
+      return res.status(400).json({ error: "Missing required fields." });
     }
 
-    // Find session by sessionId
     const session = await Session.findOne({ sessionId });
+    if (!session) return res.status(404).json({ error: "Session not found." });
 
-    if (!session) {
-      return res.status(404).json({ message: "Session not found" });
-    }
-
-    // Update the session with final values
-    session.energyConsumed = deltaEnergy;
-    session.amountUsed = amountUsed;
+    // Update session
     session.endTime = new Date(endTime);
-    session.status = "completed";
     session.endTrigger = endTrigger;
-
+    if (deltaEnergy !== undefined) session.energyConsumed = deltaEnergy;
+    if (amountUsed !== undefined) session.amountUsed = amountUsed;
+    session.status = "completed";
+    session.endEnergy = currentEnergy || session.startEnergy + session.energyConsumed;
     await session.save();
 
-    res.status(200).json({ message: "Session ended and updated successfully", session });
+    // Free up device
+    const device = await Device.findOne({ device_id: deviceId || session.deviceId });
+    if (device) {
+      device.status = "Available";
+      device.current_session_id = null;
+      await device.save();
+    }
+
+    res.status(200).json({ message: "Session ended successfully.", session });
   } catch (err) {
-    console.error("❌ Error ending session:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("Error ending session:", err);
+    res.status(500).json({ error: "Failed to end session." });
+  }
+};
+
+/**
+ * @desc   Get session by transaction ID
+ * @route  GET /api/sessions/by-transaction/:transactionId
+ * @access Private
+ */
+const getSessionByTransactionId = async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    const session = await Session.findOne({ transactionId });
+    if (!session) {
+      return res.status(404).json({ error: "Session not found." });
+    }
+    res.status(200).json(session);
+  } catch (err) {
+    console.error("Error fetching session by transactionId:", err);
+    res.status(500).json({ error: "Server error." });
+  }
+};
+
+/**
+ * @desc   Get session by session ID
+ * @route  GET /api/sessions/:sessionId
+ * @access Private
+ */
+const getSessionById = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = await Session.findOne({ sessionId });
+    if (!session) {
+      return res.status(404).json({ error: "Session not found." });
+    }
+    res.status(200).json(session);
+  } catch (err) {
+    console.error("Error fetching session by ID:", err);
+    res.status(500).json({ error: "Server error." });
+  }
+};
+
+/**
+ * @desc   Get live sensor data for a device
+ * @route  GET /api/sessions/device/:deviceId/sensor
+ * @access Private
+ */
+const getLiveDeviceSensorData = async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const device = await Device.findOne({ device_id: deviceId });
+    if (!device) {
+      return res.status(404).json({ error: "Device not found." });
+    }
+    res.status(200).json({
+      voltage: device.voltage || 0,
+      current: device.current || 0,
+      energy: device.energy || 0,
+      status: device.status
+    });
+  } catch (err) {
+    console.error("Error fetching live sensor data:", err);
+    res.status(500).json({ error: "Server error." });
   }
 };
 
 module.exports = {
+  startSession,
   endSession,
+  getSessionByTransactionId,
+  getSessionById,
+  getLiveDeviceSensorData
 };
