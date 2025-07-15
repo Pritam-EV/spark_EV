@@ -256,7 +256,7 @@ void startSession() {
   info["deviceId"]  = deviceId;
   info["sessionId"] = sessionId;
   info["userId"]    = userId;
-  info["transactionId"] = transactionId;
+  info["transactionId"] = transactionId; 
   info["energy_kWh"]= energySelected;
   info["amountPaid"]= amountPaid;
   info["startTime"] = ts;  // ISO start time

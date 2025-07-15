@@ -1,0 +1,54 @@
+DEVICE FLOW:
+no wifi, no power - bydefault - device offline
+1. Wifi connection
+2. MQTT connection
+3. Check if there is any upublished data in local storage, if yes, publish to mqtt - needs to be implemented
+4. check if there is any existing session 
+4.1 check if stop command for this session received
+4.2 terminate the session 
+5. If there is no existing session
+5.1 look for a new session start request
+5.2 Process for new session
+
+OVERALL FLOW:
+1. User selected charging option 
+2. Transaction done
+2.1 Frontend send transaction details to backend (check if there is any way to send payment confimation form razorpay to backend)
+2.2 Display start button on frontend 
+3. User clicks on start button/ resume button (show user instruction to plug in the charger) 
+3.1 Check for unutilized amount (from latest transaction)
+3.2 Process new session 
+
+CHARGING STATISTICS FLOW:
+1. Request data from backend every 5 secs.
+2. BE will check for energy consumption and device status 
+3. FE will receive live session data from BE
+
+
+Wallet:
+never update/ overright transaction 
+always add transaction details and amount 
+
+
+
+
+check if backend sent any new session start request
+
+
+
+Publish availablility of device - occupied/ reserved/ availble / faulty
+device > mqtt > backend > mongodb
+
+session start
+frontend> backend > mqtt > device > relay 
+
+charging
+device > relay > ON
+
+session info
+device > MQTT > backend > mongodb > sessions
+
+save txn id to backend 
+backend redirects to frontend - sessionstatus 
+latest-unused txn used by backend to start new session
+
