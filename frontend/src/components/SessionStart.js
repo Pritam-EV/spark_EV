@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mqtt from 'mqtt';
 import { Box, Button, CircularProgress, Typography } from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
 const MQTT_BROKER_URL = 'wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt';
@@ -13,12 +13,13 @@ const MQTT_PASSWORD   = 'Pritam123';
 export default function SessionStartPage() {
   const navigate   = useNavigate();
   const { state }  = useLocation();
+  const { deviceId, transactionId } = useParams();
+  const location = useLocation();
+  const energySelected = location.state?.energySelected;
+  const amountPaid     = location.state?.amountPaid;
+
   const {
-    deviceId,
     userId,
-    energySelected,
-    amountPaid,
-    transactionId
   } = state || {};
 
   const [loading, setLoading] = useState(true);

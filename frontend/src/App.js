@@ -53,6 +53,7 @@ const AppContent = () => {
       <Route path="/session-summary" element={<SessionSummary />} />
       <Route path="/session-start/:transactionId" element={<PrivateRoute><SessionStart /></PrivateRoute>} />
       <Route path="/live-session/:sessionId" element={<PrivateRoute><LiveSession /></PrivateRoute>} />
+      <Route path="/session-start/:deviceId/:transactionId" element={ <PrivateRoute> <SessionStartPage /> </PrivateRoute> } />
 
       {/* Default Redirect */}
       <Route path="*" element={<Navigate to="/home" />} />

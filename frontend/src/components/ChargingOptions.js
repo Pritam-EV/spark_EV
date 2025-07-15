@@ -100,7 +100,7 @@ useEffect(() => {
                 description: "Charging Session Payment",
                 handler: function (response) {
                     const transactionId = response.razorpay_payment_id;
-                    navigate(`/session-start/${transactionId}`, {
+                    navigate(`/session-start/${device_id}/${transactionId}`, {
                         state: {
                             deviceId: device_id,
                             amountPaid: estimatedCost,
