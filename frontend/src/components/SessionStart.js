@@ -1,83 +1,191 @@
-import React, { useEffect, useRef } from 'react';
+// src/components/SessionStart.js
+
+import React, { useEffect, useRef, useState } from 'react';
 import mqtt from 'mqtt';
-import { Button, Box, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
-const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
-const MQTT_USER = "pritam";
-const MQTT_PASSWORD = "Pritam123";
+const MQTT_BROKER_URL = 'wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt';
+const MQTT_USER       = 'pritam';
+const MQTT_PASSWORD   = 'Pritam123';
 
-function SessionStartPage() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { deviceId, userId, energySelected, amountPaid, transactionId } = location.state || {};
-  const sessionId = uuidv4();
+export default function SessionStartPage() {
+  const navigate   = useNavigate();
+  const { state }  = useLocation();
+  const {
+    deviceId,
+    userId,
+    energySelected,
+    amountPaid,
+    transactionId
+  } = state || {};
 
-  const mqttClient = useRef(null);   
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const sessionIdRef          = useRef(uuidv4());    // stable id
+  const mqttClient           = useRef(null);
 
+  // Compute timestamp once
+  const now       = new Date();
+  const startTime = now.toISOString();
+  const startDate = startTime.split('T')[0];
+
+  // 1) Create session in backend as soon as page loads
   useEffect(() => {
-    // Connect to MQTT
+    if (!deviceId || !transactionId) {
+      setError('Missing device or transaction info.');
+      setLoading(false);
+      return;
+    }
+
+    const createSession = async () => {
+      try {
+        const resp = await fetch('/api/sessions/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            sessionId:      sessionIdRef.current,
+            deviceId,
+            userId,
+            startTime,
+            startDate,
+            energySelected,
+            amountPaid,
+            transactionId,
+          }),
+        });
+        if (!resp.ok) {
+          const body = await resp.json();
+          throw new Error(body.error || body.message || 'Failed to create session');
+        }
+        setLoading(false);
+      } catch (err) {
+        console.error('❌ Error creating session:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    createSession();
+  }, [deviceId, transactionId, userId, energySelected, amountPaid, startTime, startDate]);
+
+  // 2) Connect to MQTT
+  useEffect(() => {
     const client = mqtt.connect(MQTT_BROKER_URL, {
       username: MQTT_USER,
       password: MQTT_PASSWORD,
       rejectUnauthorized: false,
-      reconnectPeriod: 2000
+      reconnectPeriod: 2000,
     });
-    mqttClient.current = client; 
+    mqttClient.current = client;
 
     client.on('connect', () => {
-      client.subscribe(`device/${deviceId}/sessionCommand`);
-      console.log("Subscribed to sessionCommand");
+      console.log('🔌 MQTT connected (SessionStart)');
+      client.subscribe(`device/${deviceId}/sessionCommand`, { qos: 1 });
     });
-    // Clean up on unmount
+    client.on('error', err => console.error('❌ MQTT error:', err));
+
     return () => client.end();
   }, [deviceId]);
 
-  const handleStart = async () => {
-    const now = new Date();
-    const startTime = now.toISOString();
-    const startDate = now.toISOString().split('T')[0];
-    // Send to backend API
-    await fetch('/api/sessions/start', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({ sessionId, deviceId, userId, startTime, startDate, energySelected, amountPaid, transactionId })
-    });
-    // Publish MQTT start command
-    const startCmd = {
-      command: "start",
-      sessionId, deviceId, userId, startTime, startDate,
-      energySelected, amountPaid, transactionId,
-      sessionstatus: "started"
+  // 3) Handle Start button
+  const handleStart = () => {
+    const cmd = {
+      command:       'start',
+      sessionId:     sessionIdRef.current,
+      deviceId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId,
+      sessionstatus: 'started',
     };
-    mqttClient.current.publish(`device/${deviceId}/sessionCommand`, JSON.stringify(startCmd));
-    // Go to LiveSession page
-    navigate(`/live-session/${sessionId}`, { state: { sessionId, deviceId } });
+    mqttClient.current.publish(
+      `device/${deviceId}/sessionCommand`,
+      JSON.stringify(cmd),
+      { qos: 1, retain: true }
+    );
+    navigate(`/live-session/${sessionIdRef.current}`, {
+      state: { sessionId: sessionIdRef.current, deviceId }
+    });
   };
 
+  if (loading) {
+    return (
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+        sx={{ background: '#0b0e13' }}
+      >
+        <CircularProgress size={60} sx={{ color: '#04BFBF' }} />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box p={4} sx={{ color: '#f44336' }}>
+        <Typography variant="h6">Error: {error}</Typography>
+      </Box>
+    );
+  }
+
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 4, background: "linear-gradient(145deg, #0b0e13, #111a21)" }}>
-      {/* Placeholder for EV charger image */}
-      <Box component="img" src="/assets/ev_charger_icon.png" alt="EV Charging" sx={{ width: 200, mb: 4 }} />
-      <Button 
-        variant="contained" 
+    <Box
+      sx={{
+        display:         'flex',
+        flexDirection:   'column',
+        alignItems:      'center',
+        justifyContent:  'center',
+        minHeight:       '100vh',
+        background:      'linear-gradient(145deg, #0b0e13, #111a21)',
+        p:               4,
+      }}
+    >
+      {/* Placeholder EV charger image */}
+      <Box
+        component="img"
+        src="/assets/ev_charger_icon.png"
+        alt="EV Charger"
+        sx={{ width: 200, mb: 4 }}
+      />
+
+      <Button
+        variant="contained"
         onClick={handleStart}
         sx={{
-          borderRadius: "50%", width: 120, height: 120,
-          backgroundColor: "#04BFBF", color: "#0b0e13",
-          fontWeight: "bold", fontSize: "1rem",
-          boxShadow: "0 0 10px #04BFBF",
-          animation: "pulse 2s infinite"
+          borderRadius: '50%',
+          width:        120,
+          height:       120,
+          backgroundColor: '#04BFBF',
+          color:           '#0b0e13',
+          fontWeight:      'bold',
+          fontSize:        '1rem',
+          boxShadow:       '0 0 10px #04BFBF',
+          animation:       'pulse 2s infinite',
         }}
       >
         START<br/>CHARGING
       </Button>
+
+      {/* Pulse keyframes in global CSS (or use Emotion): */}
+      <style>
+        {`
+          @keyframes pulse {
+            0%   { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
+            50%  { box-shadow: 0 0 25px rgba(4,191,191,0.9); }
+            100% { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
+          }
+        `}
+      </style>
     </Box>
   );
 }
-
-export default SessionStartPage;
