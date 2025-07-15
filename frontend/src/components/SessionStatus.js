@@ -89,14 +89,6 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
       console.log("📬 POST response:", res);
       console.log("📦 res.data:", res.data);
 
-      const newSession = { ...res.data, userId, startTime, startDate };
-      setSession(newSession);
-      setSessionStarted(true);
-      localStorage.setItem("activeSession", JSON.stringify(newSession));
-      localStorage.setItem(
-        "sessionMeta",
-        JSON.stringify({ transactionId: txnId, deviceId, amountPaid, energySelected })
-      );
     } catch (err) {
       console.error("❌ Failed to start session:", err.message);
     }
