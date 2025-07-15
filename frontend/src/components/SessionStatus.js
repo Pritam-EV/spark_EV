@@ -68,7 +68,6 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
         startDate,
         amountPaid,
         energySelected,
-        startEnergy,
       });
 
       const res = await axios.post(
@@ -82,7 +81,6 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
           startDate,
           amountPaid,
           energySelected,
-          startEnergy,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
