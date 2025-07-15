@@ -49,7 +49,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
       const token = localStorage.getItem("token");
       console.log("🔐 Token:", token);
       if (!token) throw new Error("No auth token");
-      const now = new Date();
+      const now = new Date();   
       const sessionId = "session_" + now.getTime();
       const startTime = now.toISOString();
       const startDate = startTime.split("T")[0];
