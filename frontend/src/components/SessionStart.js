@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 const MQTT_BROKER_URL = 'wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt';
 const MQTT_USER       = 'pritam';
 const MQTT_PASSWORD   = 'Pritam123';
-
+const API_BASE = process.env.REACT_APP_API_BASE;
 export default function SessionStartPage() {
   const navigate   = useNavigate();
   const { state }  = useLocation();
@@ -33,46 +33,57 @@ export default function SessionStartPage() {
   const startDate = startTime.split('T')[0];
 
   // 1) Create session in backend as soon as page loads
-  useEffect(() => {
-    if (!deviceId || !transactionId) {
-      setError('Missing device or transaction info.');
-      setLoading(false);
-      return;
-    }
+useEffect(() => {
+  const createSession = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/sessions/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          sessionId:      sessionIdRef.current,
+          deviceId,
+          userId,
+          startTime,
+          startDate,
+          energySelected,
+          amountPaid,
+          transactionId,
+        }),
+      });
 
-    const createSession = async () => {
-      try {
-        const resp = await fetch('/api/sessions/start', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({
-            sessionId:      sessionIdRef.current,
-            deviceId,
-            userId,
-            startTime,
-            startDate,
-            energySelected,
-            amountPaid,
-            transactionId,
-          }),
-        });
-        if (!resp.ok) {
-          const body = await resp.json();
-          throw new Error(body.error || body.message || 'Failed to create session');
+      const contentType = resp.headers.get('content-type') || '';
+      if (!resp.ok) {
+        let errText;
+        if (contentType.includes('application/json')) {
+          const errJson = await resp.json();
+          errText = errJson.error || errJson.message;
+        } else {
+          const errHtml = await resp.text();
+          errText = errHtml.slice(0, 200);
         }
-        setLoading(false);
-      } catch (err) {
-        console.error('❌ Error creating session:', err);
-        setError(err.message);
-        setLoading(false);
+        throw new Error(errText);
       }
-    };
 
+      // Success – ignore the JSON body (or parse if you need it)
+      setLoading(false);
+    } catch (err) {
+      console.error('❌ Error creating session:', err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  if (deviceId && transactionId && energySelected != null && amountPaid != null) {
     createSession();
-  }, [deviceId, transactionId, userId, energySelected, amountPaid, startTime, startDate]);
+  } else {
+    setError('Missing parameters.');
+    setLoading(false);
+  }
+}, [deviceId, transactionId, energySelected, amountPaid, startTime, startDate]);
+
 
   // 2) Connect to MQTT
   useEffect(() => {
