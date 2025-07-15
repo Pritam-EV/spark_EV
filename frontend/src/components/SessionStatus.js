@@ -27,13 +27,13 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
           `${process.env.REACT_APP_API_URL}/api/sessions/active?deviceId=${deviceId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-   //     if (res.data?.sessionId) {
-     //     console.log("📦 Existing session loaded from DB");
-        //  setSession(res.data);
-         // localStorage.setItem("activeSession", JSON.stringify(res.data));
-          //setSessionStarted(true);
-          //return;
-       // }
+        if (res.data?.sessionId) {
+          console.log("📦 Existing session loaded from DB");
+          setSession(res.data);
+          localStorage.setItem("activeSession", JSON.stringify(res.data));
+          setSessionStarted(true);
+          return;
+        }
       } catch (err) {
         console.warn("ℹ️ No active session found. Starting new...");
       }
