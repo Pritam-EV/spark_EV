@@ -7,20 +7,16 @@ const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.clo
 const MQTT_USER = "pritam";
 const MQTT_PASSWORD = "Pritam123";
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
-
 function LiveSessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { deviceId, energySelected, amountPaid } = location.state || {};
+  const { sessionId, deviceId, energySelected, amountPaid } = location.state || {};
   const [relayState, setRelayState] = useState(null);
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
   const [energyConsumed, setEnergyConsumed] = useState(0);
-  const { sessionId } = useParams();
 
-
-  
 const mqttClient = useRef(null);  
 
   useEffect(() => {
