@@ -167,12 +167,6 @@ export default function SessionStartPage() {
   <img
     src="/gun.gif"
     alt="EV Charger Gun"
-    style={{
-      width: '400px',
-      marginBottom: '40px',
-      borderRadius: '12px',
-      boxShadow: '0 0 20px rgba(4,191,191,0.3)',
-    }}
   />
 
   <Button
