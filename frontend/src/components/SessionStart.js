@@ -146,7 +146,7 @@ export default function SessionStartPage() {
     alignItems:     'center',
     justifyContent: 'center',
     minHeight:      '100vh',
-    background:     'linear-gradient(145deg, #0b0e13, #111a21)',
+    background:     '#151924',
     p:              4,
   }}
 >
@@ -165,10 +165,10 @@ export default function SessionStartPage() {
 
   {/* 🔌 Enlarged GIF */}
   <img
-    src="/sessionstart.jpg"
+    src="/gun1.png"
     alt="EV Charger Gun"
     style={{
-      width: '600px',
+      width: '400px',
       marginBottom: '80px',
     }}
   />
