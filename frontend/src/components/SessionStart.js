@@ -150,7 +150,7 @@ export default function SessionStartPage() {
         p:              4,
       }}
     >
-      <Box component="img" src="/public/gun.png" alt="EV Charger Gun" sx={{ width: 200, mb: 4 }} />
+      <Box component="img" src="gun.png" alt="EV Charger Gun" sx={{ width: 200, mb: 4 }} />
 
       <Button
         variant="contained"
