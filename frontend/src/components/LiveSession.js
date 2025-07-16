@@ -4,6 +4,7 @@ import { Box, Button, Typography, Card, LinearProgress } from '@mui/material';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import FooterNav from "../components/FooterNav";
 
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
 const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
 const MQTT_USER = "pritam";
 const MQTT_PASSWORD = "Pritam123";
