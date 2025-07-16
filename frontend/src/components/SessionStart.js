@@ -150,15 +150,27 @@ export default function SessionStartPage() {
     p:              4,
   }}
 >
-  {/* 🔫 GIF image of charging gun */}
-  <Box
-    component="img"
-    src="/gun.gif" // use leading slash if inside public/
-    alt="EV Charger Gun"
+  {/* ⚡️Instruction text above the GIF */}
+  <Typography
+    variant="h5"
     sx={{
-      width: 200,
-      mb: 4,
-      borderRadius: 2,
+      color: '#ffffff',
+      fontWeight: 'bold',
+      mb: 2,
+      textAlign: 'center',
+    }}
+  >
+    Plug in the charger
+  </Typography>
+
+  {/* 🔌 Enlarged GIF */}
+  <img
+    src="/gun.gif"
+    alt="EV Charger Gun"
+    style={{
+      width: '400px',
+      marginBottom: '40px',
+      borderRadius: '12px',
       boxShadow: '0 0 20px rgba(4,191,191,0.3)',
     }}
   />
@@ -178,7 +190,7 @@ export default function SessionStartPage() {
       animation:       'pulse 2s infinite',
     }}
   >
-    START<br/>CHARGING
+    START<br />CHARGING
   </Button>
 
   <style>
@@ -189,6 +201,7 @@ export default function SessionStartPage() {
       }`}
   </style>
 </Box>
+
 
   );
 }
