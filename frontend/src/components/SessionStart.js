@@ -146,7 +146,7 @@ export default function SessionStartPage() {
     alignItems:     'center',
     justifyContent: 'center',
     minHeight:      '100vh',
-    background:     '#151924',
+    background:     '#0a1117',
     p:              4,
   }}
 >
@@ -155,7 +155,6 @@ export default function SessionStartPage() {
     variant="h5"
     sx={{
       color: '#ffffff',
-      fontWeight: 'bold',
       mb: 2,
       textAlign: 'center',
     }}
