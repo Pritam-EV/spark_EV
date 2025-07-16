@@ -1,95 +1,92 @@
 // src/components/SessionStart.js
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import mqtt from 'mqtt';
 import { Box, Button, CircularProgress, Typography } from '@mui/material';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 
+const API_BASE        = process.env.REACT_APP_API_BASE || '';
 const MQTT_BROKER_URL = 'wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt';
 const MQTT_USER       = 'pritam';
 const MQTT_PASSWORD   = 'Pritam123';
-const API_BASE = process.env.REACT_APP_API_BASE;
-export default function SessionStartPage() {
-  const navigate   = useNavigate();
-  const { state }  = useLocation();
-  const { deviceId, transactionId } = useParams();
-  const location = useLocation();
-  const energySelected = location.state?.energySelected;
-  const amountPaid     = location.state?.amountPaid;
 
-  const {
-    userId,
-  } = state || {};
+export default function SessionStartPage() {
+  const { deviceId, transactionId } = useParams();
+  const location                    = useLocation();
+  const navigate                    = useNavigate();
+  const sessionIdRef                = useRef(uuidv4());
+  const createdRef                  = useRef(false);            // to run once
+  const startTimeRef                = useRef(new Date().toISOString());
+  const startDateRef                = useRef(startTimeRef.current.split('T')[0]);
+  const mqttClient                  = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
-  const sessionIdRef          = useRef(uuidv4());    // stable id
-  const mqttClient           = useRef(null);
 
-  // Compute timestamp once
-  const now       = new Date();
-  const startTime = now.toISOString();
-  const startDate = startTime.split('T')[0];
+  const energySelected = location.state?.energySelected;
+  const amountPaid     = location.state?.amountPaid;
+  const userId         = localStorage.getItem('user') || null;
 
-  // 1) Create session in backend as soon as page loads
-useEffect(() => {
-  const createSession = async () => {
-    try {
-      const resp = await fetch(`${API_BASE}/api/sessions/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          sessionId:      sessionIdRef.current,
-          deviceId,
-          userId,
-          startTime,
-          startDate,
-          energySelected,
-          amountPaid,
-          transactionId,
-        }),
-      });
+  // 1) Create session only once
+  useEffect(() => {
+    if (createdRef.current) return;                      // already ran
+    createdRef.current = true;
 
-      const contentType = resp.headers.get('content-type') || '';
-      if (!resp.ok) {
-        let errText;
-        if (contentType.includes('application/json')) {
-          const errJson = await resp.json();
-          errText = errJson.error || errJson.message;
-        } else {
-          const errHtml = await resp.text();
-          errText = errHtml.slice(0, 200);
-        }
-        throw new Error(errText);
-      }
-
-      // Success – ignore the JSON body (or parse if you need it)
+    if (!deviceId || !transactionId || energySelected == null || amountPaid == null) {
+      setError('Missing parameters.');
       setLoading(false);
-    } catch (err) {
-      console.error('❌ Error creating session:', err);
-      setError(err.message);
-      setLoading(false);
+      return;
     }
-  };
 
-  if (deviceId && transactionId && energySelected != null && amountPaid != null) {
-    createSession();
-  } else {
-    setError('Missing parameters.');
-    setLoading(false);
-  }
-}, [deviceId, transactionId, energySelected, amountPaid, startTime, startDate]);
+    (async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/api/sessions/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            sessionId:      sessionIdRef.current,
+            deviceId,
+            userId,
+            startTime:      startTimeRef.current,
+            startDate:      startDateRef.current,
+            energySelected,
+            amountPaid,
+            transactionId,
+          }),
+        });
 
+        // If duplicate transaction, treat as success
+        if (resp.status === 409) {
+          console.warn('⚠️ Session already created.');
+          setLoading(false);
+          return;
+        }
 
-  // 2) Connect to MQTT
+        if (!resp.ok) {
+          const ct = resp.headers.get('content-type') || '';
+          let text = await (ct.includes('application/json') ? resp.json() : resp.text());
+          text = typeof text === 'object' ? JSON.stringify(text) : text;
+          throw new Error(text);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error('❌ Error creating session:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    })();
+  }, [deviceId, transactionId, energySelected, amountPaid]);
+
+  // 2) Connect to MQTT once
   useEffect(() => {
     const client = mqtt.connect(MQTT_BROKER_URL, {
-      username: MQTT_USER,
-      password: MQTT_PASSWORD,
+      username:        MQTT_USER,
+      password:        MQTT_PASSWORD,
       rejectUnauthorized: false,
       reconnectPeriod: 2000,
     });
@@ -100,19 +97,18 @@ useEffect(() => {
       client.subscribe(`device/${deviceId}/sessionCommand`, { qos: 1 });
     });
     client.on('error', err => console.error('❌ MQTT error:', err));
-
     return () => client.end();
   }, [deviceId]);
 
-  // 3) Handle Start button
+  // 3) Start button publishes the command
   const handleStart = () => {
     const cmd = {
       command:       'start',
       sessionId:     sessionIdRef.current,
       deviceId,
       userId,
-      startTime,
-      startDate,
+      startTime:     startTimeRef.current,
+      startDate:     startDateRef.current,
       energySelected,
       amountPaid,
       transactionId,
@@ -123,20 +119,12 @@ useEffect(() => {
       JSON.stringify(cmd),
       { qos: 1, retain: true }
     );
-    navigate(`/live-session/${sessionIdRef.current}`, {
-      state: { sessionId: sessionIdRef.current, deviceId }
-    });
+    navigate(`/live-session/${sessionIdRef.current}`, { state: { deviceId } });
   };
 
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
-        sx={{ background: '#0b0e13' }}
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ background: '#0b0e13' }}>
         <CircularProgress size={60} sx={{ color: '#04BFBF' }} />
       </Box>
     );
@@ -144,8 +132,8 @@ useEffect(() => {
 
   if (error) {
     return (
-      <Box p={4} sx={{ color: '#f44336' }}>
-        <Typography variant="h6">Error: {error}</Typography>
+      <Box p={4}>
+        <Typography color="error">{error}</Typography>
       </Box>
     );
   }
@@ -153,30 +141,24 @@ useEffect(() => {
   return (
     <Box
       sx={{
-        display:         'flex',
-        flexDirection:   'column',
-        alignItems:      'center',
-        justifyContent:  'center',
-        minHeight:       '100vh',
-        background:      'linear-gradient(145deg, #0b0e13, #111a21)',
-        p:               4,
+        display:        'flex',
+        flexDirection:  'column',
+        alignItems:     'center',
+        justifyContent: 'center',
+        minHeight:      '100vh',
+        background:     'linear-gradient(145deg, #0b0e13, #111a21)',
+        p:              4,
       }}
     >
-      {/* Placeholder EV charger image */}
-      <Box
-        component="img"
-        src="/assets/ev_charger_icon.png"
-        alt="EV Charger"
-        sx={{ width: 200, mb: 4 }}
-      />
+      <Box component="img" src="/assets/ev_charger_icon.png" alt="EV Charger" sx={{ width: 200, mb: 4 }} />
 
       <Button
         variant="contained"
         onClick={handleStart}
         sx={{
-          borderRadius: '50%',
-          width:        120,
-          height:       120,
+          borderRadius:    '50%',
+          width:           120,
+          height:          120,
           backgroundColor: '#04BFBF',
           color:           '#0b0e13',
           fontWeight:      'bold',
@@ -188,15 +170,12 @@ useEffect(() => {
         START<br/>CHARGING
       </Button>
 
-      {/* Pulse keyframes in global CSS (or use Emotion): */}
       <style>
-        {`
-          @keyframes pulse {
+        {`@keyframes pulse {
             0%   { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
             50%  { box-shadow: 0 0 25px rgba(4,191,191,0.9); }
             100% { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
-          }
-        `}
+          }`}
       </style>
     </Box>
   );
