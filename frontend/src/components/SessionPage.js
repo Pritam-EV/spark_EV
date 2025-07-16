@@ -1,5 +1,5 @@
 // src/components/SessionPage.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import {
   Box,
@@ -23,6 +23,7 @@ const SessionPage = () => {
   const [pastSessions, setPastSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+    const sessionIdRef                = useRef(uuidv4());
 
   useEffect(() => {
     fetchSessions();
