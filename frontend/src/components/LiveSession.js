@@ -40,19 +40,37 @@ const mqttClient = useRef(null);
       client.subscribe(`device/${deviceId}/session/end`);
       client.subscribe(`device/${deviceId}/relay/state`);
     });
-    client.on('message', (topic, message) => {
-      const payload = JSON.parse(message.toString());
-      if (topic.endsWith('/session/live')) {
-        setEnergyConsumed(payload.energy_kWh || 0);
-        // Optionally set power, voltage, current from payload if provided
-        // setVoltage(payload.voltage || voltage);
-        // setCurrent(payload.current || current);
-      } else if (topic.endsWith('/session/end')) {
-        // Session ended, navigate to summary
-        navigate(`/session-summary/${sessionId}`, { state: { sessionData: payload } });
-      }
-      // handle other topics if needed
-    });
+// inside your useEffect → client.on('message', ...)
+client.on('message', (topic, buf) => {
+  const payload = buf.toString();
+
+  if (topic.endsWith('/relay/state')) {
+    // payload is just "ON" or "OFF"
+    console.log('Relay state:', payload);
+    setRelayState(payload);
+    return;
+  }
+
+  // Now only parse JSON for the other topics
+  let data;
+  try {
+    data = JSON.parse(payload);
+  } catch (err) {
+    console.warn(`Skipping non-JSON payload on ${topic}:`, payload);
+    return;
+  }
+
+  if (topic.endsWith('/session/live')) {
+    // handle data.energy_kWh, data.power_W, etc.
+    setEnergyConsumed(data.energy_kWh);
+    setVoltage(data.voltage ?? voltage);
+    setCurrent(data.current ?? current);
+  }
+  else if (topic.endsWith('/session/end')) {
+    // handle end → redirect to summary
+  }
+});
+
     return () => client.end();
   }, [deviceId, navigate, sessionId]);
 
