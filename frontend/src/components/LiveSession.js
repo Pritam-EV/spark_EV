@@ -3,8 +3,6 @@ import mqtt from 'mqtt';
 import { Box, Button, Typography, Card, LinearProgress } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FooterNav from "../components/FooterNav";
-
-
 const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
 const MQTT_USER = "pritam";
 const MQTT_PASSWORD = "Pritam123";
@@ -13,7 +11,7 @@ function LiveSessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sessionId, deviceId, energySelected, amountPaid } = location.state || {};
-  const [relayState, setRelayState] = useState(null);
+  
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
@@ -43,30 +41,13 @@ const mqttClient = useRef(null);
       client.subscribe(`device/${deviceId}/session/end`);
       client.subscribe(`device/${deviceId}/relay/state`);
     });
-client.on('message', (topic, buf) => {
-  const payload = buf.toString();
-
-  if (topic.endsWith('/relay/state')) {
-    // payload is just "ON" or "OFF"
-    console.log('Relay state:', payload);
-    setRelayState(payload);
-    return;
-  }
-
-  // Now only parse JSON for the other topics
-  let data;
-  try {
-    data = JSON.parse(payload);
-  } catch (err) {
-    console.warn(`Skipping non-JSON payload on ${topic}:`, payload);
-    return;
-  }
-
-  if (topic.endsWith('/session/live')) {
-    // handle data.energy_kWh, data.power_W, etc.
-    setEnergyConsumed(data.energy_kWh);
-  if (typeof data.voltage === 'number') setVoltage(data.voltage);
-  if (typeof data.current === 'number') setCurrent(data.current);
+    client.on('message', (topic, message) => {
+      const payload = JSON.parse(message.toString());
+      if (topic.endsWith('/session/live')) {
+        setEnergyConsumed(payload.energy_kWh || 0);
+        // Optionally set power, voltage, current from payload if provided
+        // setVoltage(payload.voltage || voltage);
+        // setCurrent(payload.current || current);
       } else if (topic.endsWith('/session/end')) {
         // Session ended, navigate to summary
         navigate(`/session-summary/${sessionId}`, { state: { sessionData: payload } });
