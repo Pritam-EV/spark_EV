@@ -6,7 +6,7 @@ import FooterNav from "../components/FooterNav";
 const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
 const MQTT_USER = "pritam";
 const MQTT_PASSWORD = "Pritam123";
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+
 function LiveSessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -21,7 +21,7 @@ const mqttClient = useRef(null);
 
   useEffect(() => {
     // Fetch device details
-    fetch(`${API_BASE}/api/devices/${deviceId}`)
+    fetch(`/api/devices/${deviceId}`)
       .then(res => res.json())
       .then(data => setDeviceInfo(data));
 
@@ -67,7 +67,7 @@ client.on('message', (topic, buf) => {
   if (typeof data.current === 'number') setCurrent(data.current);
       } else if (topic.endsWith('/session/end')) {
         // Session ended, navigate to summary
-        navigate(`/session-summary/${sessionId}`, { state:{ sessionData: data } });
+        navigate(`/session-summary/${sessionId}`, { state: { sessionData: payload } });
       }
       // handle other topics if needed
     });
