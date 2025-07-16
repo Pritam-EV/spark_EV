@@ -139,44 +139,56 @@ export default function SessionStartPage() {
   }
 
   return (
-    <Box
-      sx={{
-        display:        'flex',
-        flexDirection:  'column',
-        alignItems:     'center',
-        justifyContent: 'center',
-        minHeight:      '100vh',
-        background:     'linear-gradient(145deg, #0b0e13, #111a21)',
-        p:              4,
-      }}
-    >
-      <Box component="img" src="gun.gif" alt="EV Charger Gun" sx={{ width: 200, mb: 4 }} />
+<Box
+  sx={{
+    display:        'flex',
+    flexDirection:  'column',
+    alignItems:     'center',
+    justifyContent: 'center',
+    minHeight:      '100vh',
+    background:     'linear-gradient(145deg, #0b0e13, #111a21)',
+    p:              4,
+  }}
+>
+  {/* 🔫 GIF image of charging gun */}
+  <Box
+    component="img"
+    src="/gun.gif" // use leading slash if inside public/
+    alt="EV Charger Gun"
+    sx={{
+      width: 200,
+      mb: 4,
+      borderRadius: 2,
+      boxShadow: '0 0 20px rgba(4,191,191,0.3)',
+    }}
+  />
 
-      <Button
-        variant="contained"
-        onClick={handleStart}
-        sx={{
-          borderRadius:    '50%',
-          width:           120,
-          height:          120,
-          backgroundColor: '#04BFBF',
-          color:           '#0b0e13',
-          fontWeight:      'bold',
-          fontSize:        '1rem',
-          boxShadow:       '0 0 10px #04BFBF',
-          animation:       'pulse 2s infinite',
-        }}
-      >
-        START<br/>CHARGING
-      </Button>
+  <Button
+    variant="contained"
+    onClick={handleStart}
+    sx={{
+      borderRadius:    '50%',
+      width:           120,
+      height:          120,
+      backgroundColor: '#04BFBF',
+      color:           '#0b0e13',
+      fontWeight:      'bold',
+      fontSize:        '1rem',
+      boxShadow:       '0 0 10px #04BFBF',
+      animation:       'pulse 2s infinite',
+    }}
+  >
+    START<br/>CHARGING
+  </Button>
 
-      <style>
-        {`@keyframes pulse {
-            0%   { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
-            50%  { box-shadow: 0 0 25px rgba(4,191,191,0.9); }
-            100% { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
-          }`}
-      </style>
-    </Box>
+  <style>
+    {`@keyframes pulse {
+        0%   { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
+        50%  { box-shadow: 0 0 25px rgba(4,191,191,0.9); }
+        100% { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
+      }`}
+  </style>
+</Box>
+
   );
 }
