@@ -10,7 +10,7 @@ function LiveSessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sessionId, deviceId, energySelected, amountPaid } = location.state || {};
-  
+    const [relayState,    setRelayState]    = useState(null);
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
