@@ -1,0 +1,49 @@
+SessionStart:
+1. This page will connect with MQTT.
+2. Subscribe to  : topicSessionCommand = "device/" + deviceId + "/sessionCommand";
+3. Create sessionid and send these data to backend:
+	{sessionId,
+      deviceId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId: txnId,
+      sessionstatus: notstarted }
+4. Show an image on top and a round big button below it "START CHARGING"
+5. Once button is pressed, backend will send start session command to device and backend.
+6. always use headers: { Authorization: `Bearer ${token}` } to send any command.
+start session command:
+{
+      command:       "start",
+      sessionId,
+      deviceId,
+      userId,
+      startTime,
+      startDate,
+      energySelected,
+      amountPaid,
+      transactionId: txnId,
+	sessionstatus: started
+    };
+7. redirect to LiveSession page.
+
+
+Live Session Page:
+1. Keep connected to MQTT.
+2. Subscribe to live session topics like: 
+Voltage, current, initialenergy, currentenergy, energyconsumed. 
+3. Show stop charging button at bottom.
+4. if button pressed, session end command should be sent to backend. trigger = "manual"
+5. always use headers: { Authorization: `Bearer ${token}` } to send commands.
+6. session end command:
+{ command: "stop", sessionId: session.sessionId, deviceId }
+7. UI: At top: You are connected to "DeviceId", its location, chargertype. (extract the data from backend models for the connected device.
+At middle: progress bar (amount used/ amount paid), below that live voltage, current and energu consumed values.
+At end: charing stop button (emergency)
+8. if session ended automatically or by user manually, redirect user to session summary page. 
+
+
+
+
