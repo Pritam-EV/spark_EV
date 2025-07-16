@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
+const mongoose = require("mongoose");
 
 const {
   startSession,
@@ -54,14 +55,8 @@ router.post("/stop", authMiddleware, endSession);
 
 // 6. Payment success webhook
 router.post("/payment-success", async (req, res) => {
-  const {
-    transactionId,
-    deviceId,
-    sessionId,
-    startTime,
-    amountPaid,
-    energySelected,
-  } = req.body;
+  const { transactionId, deviceId, sessionId, startTime, amountPaid, energySelected } = req.body;
+  const userId = req.user.userId;                // ← capture userId
   try {
     if (!transactionId || !deviceId || !sessionId || !startTime) {
       return res.status(400).json({ error: "Missing required fields." });
@@ -80,6 +75,7 @@ router.post("/payment-success", async (req, res) => {
       status: "active",
       amountPaid,
       energySelected,
+      userId,      
     });
     res.status(200).json({ message: "Session created successfully after payment.", session: newSession });
   } catch (err) {
