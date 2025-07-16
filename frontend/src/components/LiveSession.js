@@ -1,32 +1,59 @@
 import React, { useState, useEffect, useRef } from 'react';
 import mqtt from 'mqtt';
 import { Box, Button, Typography, Card, LinearProgress } from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import FooterNav from "../components/FooterNav";
 const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
 const MQTT_USER = "pritam";
 const MQTT_PASSWORD = "Pritam123";
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5000';
+
 function LiveSessionPage() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { sessionId, deviceId, energySelected, amountPaid } = location.state || {};
   const [relayState, setRelayState] = useState(null);
-  const [deviceInfo, setDeviceInfo] = useState(null);
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
   const [energyConsumed, setEnergyConsumed] = useState(0);
+const { sessionId } = useParams();
+const [sessionData,    setSessionData]    = useState(null);
+const [deviceInfo,     setDeviceInfo]     = useState(null);
+const [energySelected, setEnergySelected] = useState(null);
+const [amountPaid,     setAmountPaid]     = useState(null);
+
+
 
 const mqttClient = useRef(null);  
+
+
+useEffect(() => {
+  if (!sessionId) return navigate('/home');
+  fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('Session not found');
+      return res.json();
+    })
+    .then(session => {
+      setSessionData(session);
+      setDeviceId(session.deviceId);
+      setEnergySelected(session.energySelected);
+      setAmountPaid(session.amountPaid);
+    })
+    .catch(() => navigate('/home'));
+}, [sessionId, navigate]);
+
+const [deviceId, setDeviceId] = useState(null);
+
 
   useEffect(() => {
     // Fetch device details
     fetch(`${API_BASE}/api/devices/${deviceId}`)
       .then(res => res.json())
-      .then(data => setDeviceInfo(data));
+      .then(data => setDeviceInfo(data))
+    .catch(err => console.error('Device fetch failed', err));
 
-
-
+  if (!deviceId) return;
     // Connect to MQTT
     const client = mqtt.connect(MQTT_BROKER_URL, {
       username: MQTT_USER,
