@@ -165,10 +165,10 @@ export default function SessionStartPage() {
 
   {/* 🔌 Enlarged GIF */}
   <img
-    src="/gun.gif"
+    src="/sessionstart.jpg"
     alt="EV Charger Gun"
     style={{
-      width: '400px',
+      width: '600px',
       marginBottom: '80px',
     }}
   />
