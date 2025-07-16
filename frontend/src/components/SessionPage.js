@@ -210,7 +210,7 @@ const SessionCard = ({ session, isActive, navigate }) => (
           <Button
             variant="contained"
             onClick={() =>
-              navigate(`/session/${session.sessionId}`, {
+              navigate(`/live-session/${sessionIdRef.current}`, {
                 state: {
                   deviceId: session.deviceId,
                   amountPaid: session.amountPaid,
