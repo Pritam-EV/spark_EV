@@ -21,6 +21,24 @@ router.get(
   getSessionByTransactionId
 );
 
+// 8. User’s sessions list
+router.get("/user-sessions", authMiddleware, async (req, res) => {
+  try {
+    const userIdString = req.user.userId;
+    if (!mongoose.Types.ObjectId.isValid(userIdString)) {
+      return res.status(400).json({ message: "Invalid userId in token." });
+    }
+    const userId = new mongoose.Types.ObjectId(userIdString);
+    const sessions = await Session.find({ userId }).sort({ startTime: -1 });
+    const activeSessions = sessions.filter(s => !s.endTime);
+    const pastSessions = sessions.filter(s => s.endTime);
+    res.json({ activeSessions, pastSessions });
+  } catch (error) {
+    console.error("Error fetching sessions:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // 2. Fetch session by session ID (for LiveSession page)
 router.get(
   "/:sessionId",
@@ -96,23 +114,7 @@ router.post("/update", async (req, res) => {
   res.json({ message: "Updated" });
 });
 
-// 8. User’s sessions list
-router.get("/user-sessions", authMiddleware, async (req, res) => {
-  try {
-    const userIdString = req.user.userId;
-    if (!mongoose.Types.ObjectId.isValid(userIdString)) {
-      return res.status(400).json({ message: "Invalid userId in token." });
-    }
-    const userId = new mongoose.Types.ObjectId(userIdString);
-    const sessions = await Session.find({ userId }).sort({ startTime: -1 });
-    const activeSessions = sessions.filter(s => !s.endTime);
-    const pastSessions = sessions.filter(s => s.endTime);
-    res.json({ activeSessions, pastSessions });
-  } catch (error) {
-    console.error("Error fetching sessions:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+
 
 // 9. Optional: fetch live sensor data for a device
 router.get(
