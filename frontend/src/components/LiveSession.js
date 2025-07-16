@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
 const MQTT_USER = "pritam";
 const MQTT_PASSWORD = "Pritam123";
-
+import FooterNav from "../components/FooterNav";
 function LiveSessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -132,7 +132,10 @@ client.on('message', (topic, buf) => {
           STOP CHARGING
         </Button>
       </Box>
+            <FooterNav />
     </Box>
+    
+
   );
 }
 
