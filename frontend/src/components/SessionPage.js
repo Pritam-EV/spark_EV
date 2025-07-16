@@ -23,7 +23,7 @@ const SessionPage = () => {
   const [pastSessions, setPastSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-    const sessionIdRef                = useRef(uuidv4());
+
 
   useEffect(() => {
     fetchSessions();
@@ -191,6 +191,7 @@ const SessionPage = () => {
 };
 
 const SessionCard = ({ session, isActive, navigate }) => (
+  
   <Card
     sx={{
       background: "linear-gradient(to right, rgb(9, 36, 63), #243745)",
@@ -206,12 +207,13 @@ const SessionCard = ({ session, isActive, navigate }) => (
       <Typography variant="body2" sx={{ color: "#9bcdd2" }}>Start: {new Date(session.startTime).toLocaleString()}</Typography>
 
       {isActive ? (
-        <>
+        <> 
           <Typography variant="body2" sx={{ color: "#04BFBF" }}>LIVE</Typography>
           <Button
             variant="contained"
             onClick={() =>
-              navigate(`/live-session/${sessionIdRef.current}`, {
+              
+              navigate(`/live-session/${session.sessionId}`, {
                 state: {
                   deviceId: session.deviceId,
                   amountPaid: session.amountPaid,
