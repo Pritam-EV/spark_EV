@@ -14,44 +14,57 @@ export default function SessionStartPage() {
   const location  = useLocation();
   const navigate  = useNavigate();
 
-  // ids / refs
+  // Stable IDs & refs
   const sessionIdRef    = useRef(uuidv4());
-  const createdRef      = useRef(false);        // POST /start fired
-  const sessionReadyRef = useRef(false);        // HTTP finished (ok or 409)
-  const mqttReadyRef    = useRef(false);        // MQTT connected
-  const readyRef        = useRef(false);        // both ready -> countdown
-  const startedRef      = useRef(false);        // start already sent
+  const createdRef      = useRef(false);   // API start fired
+  const sessionReadyRef = useRef(false);   // backend session created (or exists)
+  const mqttReadyRef    = useRef(false);   // MQTT connected
+  const startedRef      = useRef(false);   // start command already sent
 
-  // timestamps
+  // Stable timestamps (captured once on entry)
   const startTimeRef = useRef(new Date().toISOString());
   const startDateRef = useRef(startTimeRef.current.split('T')[0]);
 
-  // mqtt
+  // MQTT instance
   const mqttClient = useRef(null);
 
   // UI state
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(10);
+  const [isReady,     setIsReady]     = useState(false); // reactive readiness
 
-  // session values from previous page (fallback; ideally persist)
+  // Values from previous navigation state (amount/energy)
   const energySelected = location.state?.energySelected;
   const amountPaid     = location.state?.amountPaid;
 
-  // user id from localStorage
-  const storedUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }})();
-  const userId     = storedUser?._id || null;
+  // Parse user from localStorage
+  const storedUser = (() => {
+    try { return JSON.parse(localStorage.getItem('user')); }
+    catch { return null; }
+  })();
+  const userId = storedUser?._id || null;
 
-  // helper: arm countdown when both http + mqtt ready
+  /* ------------------------------------------------------------------
+   *  Helper: Arm the countdown once both backend & MQTT are ready
+   * ---------------------------------------------------------------- */
   const checkReady = () => {
-    if (readyRef.current) return;
+    console.log('checkReady()', {
+      sessionReady: sessionReadyRef.current,
+      mqttReady:    mqttReadyRef.current,
+      error,
+    });
+    if (isReady) return;
     if (sessionReadyRef.current && mqttReadyRef.current && !error) {
-      readyRef.current = true;
-      setSecondsLeft(10); // kick off countdown
+      console.log('✅ Both ready, starting countdown…');
+      setIsReady(true);
+      setSecondsLeft(10); // reset & start
     }
   };
 
-  // create session once
+  /* ------------------------------------------------------------------
+   * 1. Create session in backend (runs once)
+   * ---------------------------------------------------------------- */
   useEffect(() => {
     if (createdRef.current) return;
     createdRef.current = true;
@@ -67,8 +80,8 @@ export default function SessionStartPage() {
         const resp = await fetch(`${API_BASE}/api/sessions/start`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type':  'application/json',
+            Authorization:   `Bearer ${localStorage.getItem('token')}`,
           },
           body: JSON.stringify({
             sessionId:      sessionIdRef.current,
@@ -83,7 +96,7 @@ export default function SessionStartPage() {
         });
 
         if (resp.status === 409) {
-          console.warn('⚠️ Session already created.');
+          console.warn('⚠️ Session already exists for this transaction.');
           sessionReadyRef.current = true;
           setLoading(false);
           checkReady();
@@ -106,15 +119,18 @@ export default function SessionStartPage() {
         setLoading(false);
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId, transactionId, energySelected, amountPaid]);
 
-  // mqtt connection
+  /* ------------------------------------------------------------------
+   * 2. Connect MQTT (runs once per deviceId)
+   * ---------------------------------------------------------------- */
   useEffect(() => {
     const client = mqtt.connect(MQTT_BROKER_URL, {
-      username:        MQTT_USER,
-      password:        MQTT_PASSWORD,
-      rejectUnauthorized: false,
-      reconnectPeriod: 2000,
+      username:          MQTT_USER,
+      password:          MQTT_PASSWORD,
+      rejectUnauthorized:false,
+      reconnectPeriod:   2000,
     });
     mqttClient.current = client;
 
@@ -126,22 +142,30 @@ export default function SessionStartPage() {
     });
 
     client.on('error', err => console.error('❌ MQTT error:', err));
+
     return () => client.end();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId]);
 
-  // countdown auto start
+  /* ------------------------------------------------------------------
+   * 3. Countdown effect
+   * ---------------------------------------------------------------- */
   useEffect(() => {
-    if (!readyRef.current) return;
+    if (!isReady) return;
     if (startedRef.current) return;
+
     if (secondsLeft <= 0) {
-      handleStart(); // auto
+      handleStart(); // auto start
       return;
     }
-    const id = setTimeout(() => setSecondsLeft(s => s - 1), 1000);
-    return () => clearTimeout(id);
-  }, [secondsLeft]);
 
-  // start (manual / auto)
+    const timer = setTimeout(() => setSecondsLeft(s => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [isReady, secondsLeft]); // deliberately omitting handleStart ref to avoid resets
+
+  /* ------------------------------------------------------------------
+   * 4. Start charging (manual or auto)
+   * ---------------------------------------------------------------- */
   const handleStart = () => {
     if (startedRef.current) return;
     startedRef.current = true;
@@ -169,14 +193,23 @@ export default function SessionStartPage() {
     navigate(`/live-session/${sessionIdRef.current}`, { state: { deviceId } });
   };
 
-  // loading / error screens
+  /* ------------------------------------------------------------------
+   * 5. Loading / Error states
+   * ---------------------------------------------------------------- */
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ background: '#0b0e13' }}>
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+        sx={{ background: '#0b0e13' }}
+      >
         <CircularProgress size={60} sx={{ color: '#04BFBF' }} />
       </Box>
     );
   }
+
   if (error) {
     return (
       <Box p={4}>
@@ -185,7 +218,9 @@ export default function SessionStartPage() {
     );
   }
 
-  // main UI
+  /* ------------------------------------------------------------------
+   * 6. Main UI
+   * ---------------------------------------------------------------- */
   return (
     <Box
       sx={{
@@ -205,7 +240,7 @@ export default function SessionStartPage() {
         Plug in the charger
       </Typography>
 
-      {readyRef.current && !startedRef.current && (
+      {isReady && !startedRef.current && (
         <Typography
           variant="body1"
           sx={{ color:'#04BFBF', mb:2, textAlign:'center' }}
