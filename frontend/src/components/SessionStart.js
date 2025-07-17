@@ -223,75 +223,92 @@ const [imageLoaded, setImageLoaded] = useState(false);
    * 6. Main UI
    * ---------------------------------------------------------------- */
   return (
-    <Box
+  <Box
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      background: '#0a1117',
+      px: 2,
+    }}
+  >
+    {/* Instruction Text */}
+    <Typography
+      variant="h6"
       sx={{
-        display:        'flex',
-        flexDirection:  'column',
-        alignItems:     'center',
-        justifyContent: 'center',
-        minHeight:      '100vh',
-        background:     '#0a1117',
-        p:              4,
+        color: '#ffffff',
+        mb: { xs: 1, sm: 2 }, // ✅ smaller gap on mobile
+        textAlign: 'center',
+        fontWeight: 600,
+        fontSize: { xs: '1.1rem', sm: '1.3rem' }, // ✅ responsive font size
       }}
     >
+      Plug in the charger
+    </Typography>
+
+    {/* Charger Image */}
+    <img
+      src="/gun1.png"
+      alt="EV Charger Gun"
+      loading="eager"
+      onLoad={() => setImageLoaded(true)}
+      style={{
+        width: '200px', // ✅ slightly smaller for mobile
+        marginBottom: '12px', // ✅ reduced gap
+        opacity: imageLoaded ? 1 : 0,
+        transition: 'opacity 0.3s ease-in',
+      }}
+    />
+
+    {/* Loader when image is loading */}
+    {!imageLoaded && (
+      <CircularProgress sx={{ color: '#04BFBF', mb: 2 }} />
+    )}
+
+    {/* Countdown Text */}
+    {isReady && !startedRef.current && (
       <Typography
-        variant="h6"
-        sx={{ color: '#ffffff', mb: 8, textAlign: 'center' }}
-      >
-        Plug in the charger
-      </Typography>
-
-<img
-  src="/gun1.png"
-  alt="EV Charger Gun"
-  loading="eager"
-  onLoad={() => setImageLoaded(true)}
-  style={{
-    width: '250px',
-    marginBottom: '80px',
-    opacity: imageLoaded ? 1 : 0,
-    transition: 'opacity 0.3s ease-in',
-  }}
-/>
-
-{!imageLoaded && <CircularProgress sx={{ color: '#04BFBF', marginBottom: '80px' }} />}
-
-
-
-      {isReady && !startedRef.current && (
-        <Typography
-          variant="body1"
-          sx={{ color:'#04BFBF', mb:2, textAlign:'center' }}
-        >
-          Charging will start in {secondsLeft}s
-        </Typography>
-      )}
-
-      <Button
-        variant="contained"
-        onClick={handleStart}
+        variant="body1"
         sx={{
-          borderRadius:    '50%',
-          width:           120,
-          height:          120,
-          backgroundColor: '#04BFBF',
-          color:           '#0b0e13',
-          fontWeight:      'bold',
-          fontSize:        '1rem',
-          boxShadow:       '0 0 10px #04BFBF',
-          animation:       'pulse 2s infinite',
+          color: '#04BFBF',
+          mt: 8, // ✅ reduced gap before button
+          fontSize: { xs: '0.95rem', sm: '1rem' },
+          textAlign: 'center',
         }}
       >
-        START<br />CHARGING
-      </Button>
+        Charging will start in {secondsLeft}s
+      </Typography>
+    )}
 
-      <style>
-        {`@keyframes pulse {
-            0%   { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
-            50%  { box-shadow: 0 0 25px rgba(4,191,191,0.9); }
-            100% { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
-          }`}
-      </style>
-    </Box>
-  );
+    {/* Start Now Button */}
+    <Button
+      variant="contained"
+      onClick={handleStart}
+      sx={{
+        mt: 3, // ✅ no extra margin on mobile
+        borderRadius: '50%',
+        width: { xs: 100, sm: 120 }, // ✅ slightly smaller for mobile
+        height: { xs: 100, sm: 120 },
+        backgroundColor: '#04BFBF',
+        color: '#ffff',
+        fontWeight: 'bold',
+        fontSize: { xs: '0.9rem', sm: '1rem' }, // ✅ responsive font
+        boxShadow: '0 0 15px #04BFBF',
+        animation: 'pulse 2s infinite',
+      }}
+    >
+      START<br />NOW
+    </Button>
+
+    <style>
+      {`@keyframes pulse {
+          0%   { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
+          50%  { box-shadow: 0 0 25px rgba(4,191,191,0.9); }
+          100% { box-shadow: 0 0 10px rgba(4,191,191,0.5); }
+        }`}
+    </style>
+  </Box>
+);
 }
