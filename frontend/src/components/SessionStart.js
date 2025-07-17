@@ -8,13 +8,13 @@ const API_BASE        = process.env.REACT_APP_API_BASE || '';
 const MQTT_BROKER_URL = 'wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt';
 const MQTT_USER       = 'pritam';
 const MQTT_PASSWORD   = 'Pritam123';
-const [imageLoaded, setImageLoaded] = useState(false);
+
 
 export default function SessionStartPage() {
   const { deviceId, transactionId } = useParams();
   const location  = useLocation();
   const navigate  = useNavigate();
-
+const [imageLoaded, setImageLoaded] = useState(false);
   // Stable IDs & refs
   const sessionIdRef    = useRef(uuidv4());
   const createdRef      = useRef(false);   // API start fired
@@ -240,7 +240,7 @@ export default function SessionStartPage() {
       >
         Plug in the charger
       </Typography>
-      
+
 <img
   src="/gun1.png"
   alt="EV Charger Gun"
