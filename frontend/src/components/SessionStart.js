@@ -8,6 +8,7 @@ const API_BASE        = process.env.REACT_APP_API_BASE || '';
 const MQTT_BROKER_URL = 'wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt';
 const MQTT_USER       = 'pritam';
 const MQTT_PASSWORD   = 'Pritam123';
+const [imageLoaded, setImageLoaded] = useState(false);
 
 export default function SessionStartPage() {
   const { deviceId, transactionId } = useParams();
@@ -239,15 +240,22 @@ export default function SessionStartPage() {
       >
         Plug in the charger
       </Typography>
-
-
-
+      
 <img
-  src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAA..." // full base64 string
+  src="/gun1.png"
   alt="EV Charger Gun"
-    loading="eager"
-  style={{ width: '250px', marginBottom: '80px' }}
+  loading="eager"
+  onLoad={() => setImageLoaded(true)}
+  style={{
+    width: '250px',
+    marginBottom: '80px',
+    opacity: imageLoaded ? 1 : 0,
+    transition: 'opacity 0.3s ease-in',
+  }}
 />
+
+{!imageLoaded && <CircularProgress sx={{ color: '#04BFBF', marginBottom: '80px' }} />}
+
 
 
       {isReady && !startedRef.current && (
