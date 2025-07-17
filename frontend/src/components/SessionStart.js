@@ -240,6 +240,16 @@ export default function SessionStartPage() {
         Plug in the charger
       </Typography>
 
+
+
+<img
+  src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAA..." // full base64 string
+  alt="EV Charger Gun"
+    loading="eager"
+  style={{ width: '250px', marginBottom: '80px' }}
+/>
+
+
       {isReady && !startedRef.current && (
         <Typography
           variant="body1"
@@ -248,12 +258,6 @@ export default function SessionStartPage() {
           Charging will start in {secondsLeft}s
         </Typography>
       )}
-
-      <img
-        src="/gun1.png"
-        alt="EV Charger Gun"
-        style={{ width: '250px', marginBottom: '80px' }}
-      />
 
       <Button
         variant="contained"
