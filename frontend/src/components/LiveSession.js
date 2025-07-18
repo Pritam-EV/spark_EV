@@ -3,6 +3,7 @@ import mqtt from 'mqtt';
 import { Box, Button, Typography, Card, LinearProgress } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FooterNav from "../components/FooterNav";
+import ReactSpeedometer from 'react-d3-speedometer';
 
 const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt";
 const MQTT_USER = "pritam";
@@ -19,6 +20,7 @@ function LiveSessionPage() {
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
   const [energyConsumed, setEnergyConsumed] = useState(0);
+  const usagePercent = Math.min((energyConsumed / energySelected) * 100, 100);
 
 const mqttClient = useRef(null);  
 
@@ -93,7 +95,7 @@ client.on('message', (topic, buf) => {
     navigate(`/session-summary/${sessionId}`, { state: { ended: true } });
   };
 
-  const usagePercent = (energyConsumed / energySelected) * 100;
+
 
   return (
     <Box sx={{ p: 3, background: "#0b0e13", minHeight: "100vh" }}>
@@ -113,6 +115,60 @@ client.on('message', (topic, buf) => {
         value={usagePercent} 
         sx={{ height: 12, borderRadius: 6, backgroundColor: "#2c4c57", '& .MuiLinearProgress-bar': { backgroundColor: "#04BFBF" } }} 
       />
+
+{/* Used Energy Text */}
+      <div style={{ textAlign: 'center', marginTop: '10px', marginBottom: '20px' }}>
+        Used: {energyConsumed.toFixed(2)} kWh / {energySelected} kWh
+      </div>
+
+      {/* Speedometer Gauges */}
+      <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '20px' }}>
+        {/* Voltage Gauge */}
+        <div style={{ backgroundColor: '#2c4c57', padding: '10px', borderRadius: '8px' }}>
+          <ReactSpeedometer
+            // Show voltage up to 260V
+            minValue={0}
+            maxValue={260}
+            // Example static value (you can bind to state if needed)
+            value={230}
+            segments={6}
+            needleColor="#04BFBF"
+            // Make gauge blend with dark theme
+            startColor="#2c4c57"
+            endColor="#2c4c57"
+            segmentColors={Array(6).fill('#2c4c57')}
+            textColor="#fff"
+            width={200}
+            height={160}
+            valueTextFontSize="14px"
+            currentValueText=""
+          />
+          <div style={{ textAlign: 'center', color: '#fff', marginTop: '5px' }}>Voltage (V)</div>
+        </div>
+
+        {/* Current Gauge */}
+        <div style={{ backgroundColor: '#2c4c57', padding: '10px', borderRadius: '8px' }}>
+          <ReactSpeedometer
+            // Show current up to 35A
+            minValue={0}
+            maxValue={35}
+            // Example static value
+            value={20}
+            segments={7}
+            needleColor="#04BFBF"
+            startColor="#2c4c57"
+            endColor="#2c4c57"
+            segmentColors={Array(7).fill('#2c4c57')}
+            textColor="#fff"
+            width={200}
+            height={160}
+            valueTextFontSize="14px"
+            currentValueText=""
+          />
+          <div style={{ textAlign: 'center', color: '#fff', marginTop: '5px' }}>Current (A)</div>
+        </div>
+      </div>
+
       {/* Live stats */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h6" sx={{ color: "#7de0dd" }}>
