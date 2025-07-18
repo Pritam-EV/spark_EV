@@ -14,8 +14,12 @@ export default function LiveSessionPage() {
     chargerId,
     transactionId,
     startDate,
-    startTime
+    startTime,
+    currentEnergy,
+    deltaEnergy,
+    amountUsed
   } = location.state || {};
+  const endTime = new Date().toISOString();
 const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onrender.com';
 
   // State variables
@@ -116,12 +120,13 @@ const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onr
 
 
   const handleStop = async () => {
-    const endTime = new Date().toISOString();
+    
     // Notify backend to stop the session
     console.log('Stopping session, sending stop command...');
 
 
   try {
+    
     // Send MQTT stop command
     const stopCommand = {
       command: 'stop',
