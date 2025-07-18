@@ -116,13 +116,20 @@ export default function LiveSessionPage() {
     const endTime = new Date().toISOString();
     // Notify backend to stop the session
     console.log('Stopping session, sending stop command...');
-    await fetch('/api/sessions/stop', {
+    await fetch('https://spark-ev-backend.onrender.com/api/sessions/stop', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('token')}`
       },
-      body: JSON.stringify({ sessionId, endTime, endTrigger: 'manual', deviceId })
+      body: JSON.stringify({     
+    sessionId,
+    endTime: new Date().toISOString(),
+    endTrigger: 'manual',
+    currentEnergy, // include if needed
+    deltaEnergy,   // include if needed
+    amountUsed,    // include if needed
+    deviceId, })
     }).catch(err => console.error('Error stopping session:', err));
 
     // Publish MQTT stop command
