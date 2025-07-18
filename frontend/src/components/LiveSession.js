@@ -122,14 +122,7 @@ export default function LiveSessionPage() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${localStorage.getItem('token')}`
       },
-      body: JSON.stringify({     
-    sessionId,
-    endTime: new Date().toISOString(),
-    endTrigger: 'manual',
-    currentEnergy, // include if needed
-    deltaEnergy,   // include if needed
-    amountUsed,    // include if needed
-    deviceId, })
+      body: JSON.stringify({ sessionId, endTime, endTrigger: 'manual', deviceId })
     }).catch(err => console.error('Error stopping session:', err));
 
     // Publish MQTT stop command
