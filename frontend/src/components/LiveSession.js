@@ -14,12 +14,14 @@ function LiveSessionPage() {
     
   const navigate = useNavigate();
   const location = useLocation();
-  const { sessionId, deviceId, energySelected, amountPaid } = location.state || {};
+  const { sessionId, deviceId, amountPaid } = location.state || {};
     const [relayState,    setRelayState]    = useState(null);
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
-  const [energyConsumed, setEnergyConsumed] = useState(0);
+
+   const [energyConsumed, setEnergyConsumed] = useState(0);
+  const [energySelected, setEnergySelected] = useState(energySelectedFromProps || 50);
   const usagePercent = Math.min((energyConsumed / energySelected) * 100, 100);
 
 const mqttClient = useRef(null);  
@@ -95,9 +97,87 @@ client.on('message', (topic, buf) => {
     navigate(`/session-summary/${sessionId}`, { state: { ended: true } });
   };
 
+  
+  // Inline style for car fill container
+  const carContainerStyle = {
+    position: 'relative',
+    width: '220px',
+    height: '120px',
+    margin: '0 auto',
+  };
+  const carImageStyle = {
+    position: 'absolute',
+    bottom: 0,
+    width: '220px',
+    height: '120px',
+    zIndex: 2,
+    pointerEvents: 'none',
+  };
+  const fillStyle = {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: '100%',
+    height: `${usagePercent}%`,
+    backgroundColor: '#04BFBF',
+    overflow: 'hidden',
+    transition: 'height 0.5s ease',
+    zIndex: 1,
+  };
+  // Glow overlay style
+  const glowStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    boxShadow: '0 0 20px #04BFBF',
+    pointerEvents: 'none',
+    zIndex: 3,
+  };
+
+
 
 
   return (
+
+        <div style={{ color: '#fff', backgroundColor: '#172D32', padding: '20px' }}>
+      {/* Style definitions for wave animation */}
+      <style>{`
+        @keyframes wave {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0); }
+        }
+        .wave {
+          position: absolute;
+          bottom: -5px;
+          width: 200%;
+          height: 100%;
+          background: rgba(4, 191, 191, 0.6);
+          border-radius: 37%;
+          animation: wave 6s linear infinite;
+        }
+        .wave2 {
+          animation-duration: 4s !important;
+          opacity: 0.4;
+          border-radius: 45%;
+        }
+      `}</style>
+
+      {/* Animated Car Fill Container */}
+      <div style={carContainerStyle}>
+        {/* Waves */}
+        {usagePercent < 100 && <div className="wave" />}
+        {usagePercent < 100 && <div className="wave wave2" />}
+        {/* Car image (use your /car2.png image) */}
+        <img src="/car2.png" alt="Car" style={carImageStyle} />
+        {/* Glow overlay */}
+        <div style={glowStyle}></div>
+        {/* Fill (background behind car) */}
+        <div style={fillStyle}></div>
+      </div>
+
+
     <Box sx={{ p: 3, background: "#0b0e13", minHeight: "100vh" }}>
       {deviceInfo && (
         <Card sx={{ p: 2, mb: 3, background: "linear-gradient(to right, #1e2c3a, #243745)", color: "#e1f5f5" }}>
@@ -115,6 +195,8 @@ client.on('message', (topic, buf) => {
         value={usagePercent} 
         sx={{ height: 12, borderRadius: 6, backgroundColor: "#2c4c57", '& .MuiLinearProgress-bar': { backgroundColor: "#04BFBF" } }} 
       />
+
+
 
 {/* Used Energy Text */}
       <div style={{ textAlign: 'center', marginTop: '10px', marginBottom: '20px' }}>
@@ -195,8 +277,8 @@ client.on('message', (topic, buf) => {
             <FooterNav />
     </Box>
     
-
+</div>
+  
   );
-}
-
+};
 export default LiveSessionPage;
