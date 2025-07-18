@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactSpeedometer from 'react-d3-speedometer';
-// import Button from '@mui/material/Button'; // Uncomment if using MUI
-// import mqtt from 'mqtt'; // Uncomment if MQTT is used
+import Button from '@mui/material/Button'; // Uncomment if using MUI
+import mqtt from 'mqtt'; // Uncomment if MQTT is used
 
 const LiveSessionPage = ({ sessionId, energySelectedFromProps }) => {
   // State for consumed and selected energy (kWh)
@@ -16,7 +16,7 @@ const LiveSessionPage = ({ sessionId, energySelectedFromProps }) => {
 
   useEffect(() => {
     // Example MQTT setup (adjust broker URL and topic as needed)
-    /*
+    
     clientRef.current = mqtt.connect('ws://your-broker-url');
     clientRef.current.subscribe(`sessions/${sessionId}/energy`);
     clientRef.current.on('message', (topic, message) => {
@@ -30,7 +30,7 @@ const LiveSessionPage = ({ sessionId, energySelectedFromProps }) => {
         clientRef.current.end();
       }
     };
-    */
+    
   }, [sessionId]);
 
   const handleStop = () => {
@@ -173,7 +173,7 @@ const LiveSessionPage = ({ sessionId, energySelectedFromProps }) => {
       {/* Stop Session Button */}
       <div style={{ textAlign: 'center', marginTop: '30px' }}>
         {/* Using MUI Button: */}
-        {/* <Button variant="contained" color="secondary" onClick={handleStop}>Stop</Button> */}
+        { <Button variant="contained" color="secondary" onClick={handleStop}>Stop</Button> }
         <button onClick={handleStop} style={{
           backgroundColor: '#04BFBF',
           color: '#fff',
