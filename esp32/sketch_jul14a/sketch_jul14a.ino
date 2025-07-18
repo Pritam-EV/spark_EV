@@ -95,7 +95,7 @@ void setup() {
   mqtt.subscribe(topicSessionCommand.c_str(), 1);
   Serial.println("Subscribed to session command topic.");
 
-  publishStatus("available");
+  publishStatus("Available");
   updateLED("available");
 }
 
@@ -333,7 +333,7 @@ void endSession() {
   mqtt.endMessage();
   Serial.printf("⇢ session ended, %.3f kWh total.\\n", energyConsumed);
 
-  publishStatus("available");
+  publishStatus("Available");
   updateLED("available");
 
   // Clear stored session from EEPROM
