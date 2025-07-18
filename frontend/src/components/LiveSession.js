@@ -16,6 +16,7 @@ export default function LiveSessionPage() {
     startDate,
     startTime
   } = location.state || {};
+const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onrender.com';
 
   // State variables
   const [relayState, setRelayState] = useState('OFF');
@@ -112,30 +113,60 @@ export default function LiveSessionPage() {
     return () => clearInterval(interval);
   }, []);
 
+
+
   const handleStop = async () => {
     const endTime = new Date().toISOString();
     // Notify backend to stop the session
     console.log('Stopping session, sending stop command...');
-    await fetch('https://spark-ev-backend.onrender.com/api/sessions/stop', {
+
+
+  try {
+    // Send MQTT stop command
+    const stopCommand = {
+      command: 'stop',
+      sessionId,
+      deviceId,
+      endTrigger: 'manual',
+    };
+
+    mqttClient.current?.publish(
+      `device/${deviceId}/sessionCommand`,
+      JSON.stringify(stopCommand),
+      { qos: 1, retain: true }
+    );
+    console.log('📡 MQTT stop command published:', stopCommand);
+
+    // Also send REST stop request to backend
+    const response = await fetch(`${API_BASE}/api/sessions/stop`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
-      body: JSON.stringify({ sessionId, endTime, endTrigger: 'manual', deviceId })
-    }).catch(err => console.error('Error stopping session:', err));
+      body: JSON.stringify({
+        sessionId,
+        deviceId,
+        endTime: new Date().toISOString(),
+        endTrigger: 'manual',
+        currentEnergy,
+        deltaEnergy,
+        amountUsed,
+      }),
+    });
 
-    // Publish MQTT stop command
-    const stopCmd = { command: "stop", sessionId, deviceId, endTime };
-    console.log('Publishing MQTT stop command:', stopCmd);
-    mqttClient.current.publish(
-      `device/${deviceId}/sessionCommand`,
-      JSON.stringify(stopCmd)
-    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`❌ Backend stop failed: ${errorText}`);
+    }
 
-    // Navigate to summary page
-    navigate(`/session-summary/${sessionId}`, { state: { ended: true } });
-  };
+    console.log('✅ Session stopped successfully');
+    navigate('/session-summary', { state: { sessionId } });
+  } catch (err) {
+    console.error('❌ Error stopping session:', err);
+    alert('Failed to stop session. Please try again.');
+  }
+};
 
   return (
     <>

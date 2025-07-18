@@ -4,10 +4,11 @@ import mqtt from 'mqtt';
 import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
 
-const API_BASE        = process.env.REACT_APP_API_BASE || '';
+
 const MQTT_BROKER_URL = 'wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt';
 const MQTT_USER       = 'pritam';
 const MQTT_PASSWORD   = 'Pritam123';
+const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onrender.com';
 
 
 export default function SessionStartPage() {
