@@ -14,14 +14,13 @@ function LiveSessionPage() {
     
   const navigate = useNavigate();
   const location = useLocation();
-  const { sessionId, deviceId, amountPaid } = location.state || {};
+  const { sessionId, deviceId, energySelected, amountPaid } = location.state || {};
     const [relayState,    setRelayState]    = useState(null);
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
-
-   const [energyConsumed, setEnergyConsumed] = useState(0);
-  const [energySelected, setEnergySelected] = useState(energySelectedFromProps || 50);
+  
+  const [energyConsumed, setEnergyConsumed] = useState(0);
   const usagePercent = Math.min((energyConsumed / energySelected) * 100, 100);
 
 const mqttClient = useRef(null);  
