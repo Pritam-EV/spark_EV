@@ -46,4 +46,5 @@ At end: charing stop button (emergency)
 
 
 
+livesession code prompt:
 
