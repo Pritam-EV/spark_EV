@@ -62,8 +62,9 @@ export default function LiveSessionPage() {
 
   useEffect(() => {
     let polling = true;
-    const token = localStorage.getItem('token'); // for auth, if needed
+  
     const fetchSessionData = async () => {
+      const token = localStorage.getItem('token'); // for auth, if needed
       try {
         const response = await fetch(`${API_BASE}/api/sessions/active`, {
           method: 'GET',
