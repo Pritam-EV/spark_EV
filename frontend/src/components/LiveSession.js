@@ -63,37 +63,34 @@ export default function LiveSessionPage() {
   useEffect(() => {
     let polling = true;
   
-    const fetchSessionData = async () => {
-      const token = localStorage.getItem('token'); // for auth, if needed
-      try {
-        const response = await fetch(`${API_BASE}/api/sessions/active`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Failed to fetch active session:', errorText);
-          return;
-        }
-        const data = await response.json();
-        console.log('Fetched session data:', data);
-        // Update state with data from backend
-        setEnergyConsumed(data.energyConsumed);
-        setVoltage(data.voltage);
-        setCurrent(data.current);
-        // If needed, update other state like energySelected, amountPaid, etc.
-        // setEnergySelected(data.energySelected); // if in state
-        // setAmountPaid(data.amountPaid);
-      } catch (err) {
-        console.error('Error fetching session data:', err);
-      }
-    };
+const fetchActiveSession = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch("https://spark-ev-backend.onrender.com/api/sessions/active", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.warn("Failed to fetch active session:", data);
+      return;
+    }
+
+    console.log("Fetched active session:", data);
+    setSessionData(data);
+  } catch (error) {
+    console.error("Error fetching active session:", error);
+  }
+};
+
     // Initial fetch and then poll every 3 seconds
-    fetchSessionData();
-    const interval = setInterval(fetchSessionData, 3000);
+    fetchActiveSession();
+    const interval = setInterval(fetchActiveSession, 3000);
     return () => { 
       clearInterval(interval);
       polling = false;
