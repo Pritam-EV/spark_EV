@@ -82,7 +82,7 @@ const fetchActiveSession = async () => {
     }
 
     console.log("Fetched active session:", data);
-    setSessionData(data);
+    fetchActiveSession(data);
   } catch (error) {
     console.error("Error fetching active session:", error);
   }
