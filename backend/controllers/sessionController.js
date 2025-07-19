@@ -6,6 +6,44 @@ const Device = require("../models/device");
  * @route  POST /api/sessions/start
  * @access Private
  */
+
+
+// GET /api/sessions/active
+const getActiveSession = async (req, res) => {
+  try {
+    const userId = req.user._id;  // or however your auth middleware attaches the user
+    console.log(`Fetching active session for user ${userId}`);
+    // Find one active session for this user
+    const session = await Session.findOne({ userId, status: 'active' }).lean();
+    if (!session) {
+      console.warn('No active session found');
+      return res.status(404).json({ error: 'No active session' });
+    }
+    // Optionally find the latest telemetry entry for voltage/current
+    let latestVoltage = 0, latestCurrent = 0;
+    if (session.telemetry && session.telemetry.length > 0) {
+      const lastEntry = session.telemetry[session.telemetry.length - 1];
+      latestVoltage = lastEntry.voltage || 0;
+      latestCurrent = lastEntry.current || 0;
+    }
+    // Prepare response data (include only needed fields)
+    const responseData = {
+      sessionId: session.sessionId,
+      transactionId: session.transactionId,
+      energySelected: session.energySelected,
+      amountPaid: session.amountPaid,
+      energyConsumed: session.energyConsumed,
+      voltage: latestVoltage,
+      current: latestCurrent
+    };
+    console.log('Active session data:', responseData);
+    res.json(responseData);
+  } catch (error) {
+    console.error('Error in getActiveSession:', error);
+    res.status(500).json({ error: 'Server error fetching active session' });
+  }
+};
+
 const startSession = async (req, res) => {
   try {
     const {
@@ -70,13 +108,21 @@ const startSession = async (req, res) => {
  * @route  POST /api/sessions/stop
  * @access Private
  */
+
+
+
+
 const endSession = async (req, res) => {
+  console.log("Stop request received:", req.body);
+
   try {
     const { sessionId, endTime, endTrigger, currentEnergy, deltaEnergy, amountUsed, deviceId } = req.body;
 
-    if (!sessionId || !endTime || !endTrigger) {
-      return res.status(400).json({ error: "Missing required fields." });
-    }
+if (!sessionId || !endTime || !endTrigger) {
+  console.warn("Missing fields in stop request:", req.body);
+  return res.status(400).json({ error: "Missing required fields." });
+}
+
 
     const session = await Session.findOne({ sessionId });
     if (!session) return res.status(404).json({ error: "Session not found." });
@@ -169,8 +215,10 @@ const getLiveDeviceSensorData = async (req, res) => {
 
 module.exports = {
   startSession,
-  endSession,
+  endSession, // Only export this, not stopSession
   getSessionByTransactionId,
   getSessionById,
-  getLiveDeviceSensorData
+  getLiveDeviceSensorData,
+  getActiveSession,
 };
+

@@ -17,7 +17,7 @@ function startMqttSubscriber() {
   const client = mqtt.connect(MQTT_URL, MQTT_OPTIONS);
 
   client.on('connect', () => {
-    console.log('🔌 MQTT Subscriber connected');
+    console.log('Backend connected to MQTT');
     client.subscribe([
       'device/+/sessionCommand',
       'device/+/session/live',

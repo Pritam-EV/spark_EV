@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const mongoose = require("mongoose");
+const sessionController = require('../controllers/sessionController');
+
 
 const {
   startSession,
@@ -9,6 +11,7 @@ const {
   getSessionByTransactionId,
   getSessionById,
   getLiveDeviceSensorData,
+  getActiveSession,
 } = require("../controllers/sessionController");
 
 const Session = require("../models/session");
@@ -47,23 +50,9 @@ router.get(
 );
 
 // 3. Active session lookup (unchanged)
-router.get("/active", async (req, res) => {
-  const { deviceId } = req.query;
-  if (!deviceId) {
-    return res.status(400).json({ message: "Missing deviceId parameter" });
-  }
-  try {
-    const activeSession = await Session.findOne({
-      deviceId,
-      status: "active",
-    });
-    if (activeSession) return res.json(activeSession);
-    res.status(404).json({ message: "No active session found" });
-  } catch (err) {
-    console.error("Error fetching active session:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+// Add this route for getting the active session of the authenticated user
+router.get('/active', authMiddleware, getActiveSession);
+module.exports = router;
 
 // 4. Start session (Triggered after payment success)
 router.post("/start", authMiddleware, startSession);

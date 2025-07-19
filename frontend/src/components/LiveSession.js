@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import mqtt from 'mqtt';
+
 import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function LiveSessionPage() {
@@ -15,14 +15,12 @@ export default function LiveSessionPage() {
     transactionId,
     startDate,
     startTime,
-    currentEnergy,
-    deltaEnergy,
-    amountUsed
   } = location.state || {};
-const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onrender.com';
+  
+  const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onrender.com';
 
   // State variables
-  const [relayState, setRelayState] = useState('OFF');
+  const [relayState] = useState('OFF');
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [voltage, setVoltage] = useState(0);
   const [current, setCurrent] = useState(0);
@@ -39,7 +37,7 @@ const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onr
     ? ((energyConsumed / energySelected) * amountPaid).toFixed(2)
     : '0.00';
 
-  const mqttClient = useRef(null);
+
   const relayRef = useRef(relayState);
   // Keep a ref to the latest relayState for interval logging
   useEffect(() => {
@@ -58,55 +56,49 @@ const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onr
         .catch(err => console.error('Error fetching device info:', err));
     }
 
-    // Connect to MQTT broker
-    const client = mqtt.connect("wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt", {
-      username: "pritam",
-      password: "Pritam123",
-      rejectUnauthorized: false
-    });
-    mqttClient.current = client;
-
-    client.on('connect', () => {
-      console.log('Connected to MQTT broker');
-      // Subscribe to live session, end session, and relay state topics
-      client.subscribe(`device/${deviceId}/session/live`);
-      client.subscribe(`device/${deviceId}/session/end`);
-      client.subscribe(`device/${deviceId}/relay/state`);
-      console.log(`Subscribed to device/${deviceId}/session/live`);
-      console.log(`Subscribed to device/${deviceId}/session/end`);
-      console.log(`Subscribed to device/${deviceId}/relay/state`);
-    });
-
-    client.on('message', (topic, buf) => {
-      const payload = buf.toString();
-      if (topic.endsWith('/relay/state')) {
-        console.log('Relay state message received:', payload);
-        setRelayState(payload); // Update charging status
-        return;
-      }
-      let data;
-      try {
-        data = JSON.parse(payload);
-      } catch (err) {
-        console.warn(`Skipping non-JSON payload on ${topic}:`, payload);
-        return;
-      }
-      if (topic.endsWith('/session/live')) {
-        console.log('Live session data received:', data);
-        // Update live metrics
-        setEnergyConsumed(data.energy_kWh);
-        if (data.voltage !== undefined) setVoltage(data.voltage);
-        if (data.current !== undefined) setCurrent(data.current);
-      } else if (topic.endsWith('/session/end')) {
-        console.log('Session ended payload received:', data);
-        // Optionally handle session end (navigation etc.)
-      }
-    });
-
-    return () => {
-      client.end();
-    };
   }, [deviceId]);
+
+
+
+  useEffect(() => {
+    let polling = true;
+    const token = localStorage.getItem('token'); // for auth, if needed
+    const fetchSessionData = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/sessions/active`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Failed to fetch active session:', errorText);
+          return;
+        }
+        const data = await response.json();
+        console.log('Fetched session data:', data);
+        // Update state with data from backend
+        setEnergyConsumed(data.energyConsumed);
+        setVoltage(data.voltage);
+        setCurrent(data.current);
+        // If needed, update other state like energySelected, amountPaid, etc.
+        // setEnergySelected(data.energySelected); // if in state
+        // setAmountPaid(data.amountPaid);
+      } catch (err) {
+        console.error('Error fetching session data:', err);
+      }
+    };
+    // Initial fetch and then poll every 3 seconds
+    fetchSessionData();
+    const interval = setInterval(fetchSessionData, 3000);
+    return () => { 
+      clearInterval(interval);
+      polling = false;
+    };
+  }, []);
+
 
   // Log the current relay state every 5 seconds
   useEffect(() => {
@@ -133,38 +125,27 @@ const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onr
       endTrigger: 'manual',
     };
 
-    mqttClient.current?.publish(
-      `device/${deviceId}/sessionCommand`,
-      JSON.stringify(stopCommand),
-      { qos: 1, retain: true }
-    );
-    console.log('📡 MQTT stop command published:', stopCommand);
 
-    // Also send REST stop request to backend
-    const response = await fetch(`${API_BASE}/api/sessions/stop`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-      body: JSON.stringify({
-        sessionId,
-        deviceId,
-        endTime: new Date().toISOString(),
-        endTrigger: 'manual',
-        currentEnergy,
-        deltaEnergy,
-        amountUsed,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`❌ Backend stop failed: ${errorText}`);
-    }
-
-    console.log('✅ Session stopped successfully');
-    navigate('/session-summary', { state: { sessionId } });
+ console.log('MQTT stop command published:', stopCommand);
+ const response = await fetch(`${API_BASE}/api/sessions/stop`, {
+   method: 'POST',
+   headers: {
+     'Content-Type': 'application/json',
+     Authorization: `Bearer ${localStorage.getItem('token')}`,
+   },
+   body: JSON.stringify({
+     sessionId, deviceId,
+     endTime: new Date().toISOString(),
+     endTrigger: 'manual',
+     // currentEnergy, deltaEnergy, amountUsed // include if backend needs
+   }),
+ });
+ if (!response.ok) {
+   const errorText = await response.text();
+   throw new Error(`Backend stop failed: ${errorText}`);
+ }
+ console.log('Session stopped successfully');
+ navigate('/session-summary', { state: { sessionId } });
   } catch (err) {
     console.error('❌ Error stopping session:', err);
     alert('Failed to stop session. Please try again.');
