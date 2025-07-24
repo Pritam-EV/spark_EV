@@ -8,8 +8,6 @@ const QRScanner = () => {
   const [device_id, setDeviceId] = useState("");
   const [error, setError] = useState("");
 
-  const API_URL = "https://spark-ev-backend.onrender.com/api/devices/check-device";
-
   const handleScan = async (data) => {
     if (data?.text) {
       setDeviceId(data.text);
@@ -24,7 +22,7 @@ const QRScanner = () => {
 
   const verifyDevice = async (id) => {
     try {
-      const response = await axios.get(`${API_URL}/${id}`);
+      const response = await axios.get(`${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/check-device/${id}`);
       if (response.data.exists) {
         navigate(`/charging-options/${id}`);
       } else {

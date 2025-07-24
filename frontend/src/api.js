@@ -1,16 +1,13 @@
 import axios from 'axios';
-const BASE_URL = "https://spark-ev-backend.onrender.com"; // Or your actual backend URL
-const API_URL = 'https://spark-ev-backend.onrender.com';
-const API_BASE_URL = "https://spark-ev-backend.onrender.com";
 
-export const getDevices = () => axios.get(`${API_URL}/devices`);
+export const getDevices = () => axios.get(`${process.env.REACT_APP_Backend_API_Base_URL}/devices`);
 export const saveSession = (sessionData) =>
-    axios.post(`${BASE_URL}/sessions/start`, sessionData);
+    axios.post(`${process.env.REACT_APP_Backend_API_Base_URL}/sessions/start`, sessionData);
   
   export const endSession = (sessionData) =>
-    axios.post(`${BASE_URL}/sessions/end`, sessionData);
+    axios.post(`${process.env.REACT_APP_Backend_API_Base_URL}/sessions/end`, sessionData);
   export const startSession = async (transactionId, deviceId) => {
-    return fetch("https://spark-ev-backend.onrender.com/api/sessions/start", {
+    return fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ transactionId, deviceId }),

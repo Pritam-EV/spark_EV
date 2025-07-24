@@ -33,15 +33,13 @@ const Login = () => {
         return;
       }
 
-      const res = await axios.post("https://spark-ev-backend.onrender.com/api/auth/google", {
+      const res = await axios.post(`${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/google`, {
         token: response.credential,
       });
 
       console.log("Google Login Success:", res.data);
-localStorage.setItem("token", res.data.token);
-localStorage.setItem("user", JSON.stringify(res.data.user));
-
-
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
       if (res.data.isNewUser) {
         console.log("🔹 First-time user detected. Showing signup form...");
@@ -94,7 +92,7 @@ localStorage.setItem("user", JSON.stringify(res.data.user));
     }
 
     try {
-      const res = await axios.post("https://spark-ev-backend.onrender.com/api/auth/signup", {
+      const res = await axios.post(`${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/signup`, {
         name,
         mobile,
         vehicleType,

@@ -1,17 +1,10 @@
 const Session = require("../models/session");
 const Device = require("../models/device");
 
-/**
- * @desc   Start a new charging session
- * @route  POST /api/sessions/start
- * @access Private
- */
-
-
 // GET /api/sessions/active
 const getActiveSession = async (req, res) => {
   try {
-    const userId = req.user._id;  // or however your auth middleware attaches the user
+    const userId = req.user.userId;  // or however your auth middleware attaches the user
     console.log(`Fetching active session for user ${userId}`);
     // Find one active session for this user
     const session = await Session.findOne({ userId, status: 'active' }).lean();
@@ -33,6 +26,8 @@ const getActiveSession = async (req, res) => {
       energySelected: session.energySelected,
       amountPaid: session.amountPaid,
       energyConsumed: session.energyConsumed,
+      startDate: session.startDate,
+      startTime: session.startTime,
       voltage: latestVoltage,
       current: latestCurrent
     };
@@ -44,6 +39,11 @@ const getActiveSession = async (req, res) => {
   }
 };
 
+/**
+ * @desc   Start a new charging session
+ * @route  POST /api/sessions/start
+ * @access Private
+ */
 const startSession = async (req, res) => {
   try {
     const {
@@ -108,21 +108,16 @@ const startSession = async (req, res) => {
  * @route  POST /api/sessions/stop
  * @access Private
  */
-
-
-
-
 const endSession = async (req, res) => {
   console.log("Stop request received:", req.body);
 
   try {
     const { sessionId, endTime, endTrigger, currentEnergy, deltaEnergy, amountUsed, deviceId } = req.body;
 
-if (!sessionId || !endTime || !endTrigger) {
-  console.warn("Missing fields in stop request:", req.body);
-  return res.status(400).json({ error: "Missing required fields." });
-}
-
+    if (!sessionId || !endTime || !endTrigger) {
+      console.warn("Missing fields in stop request:", req.body);
+      return res.status(400).json({ error: "Missing required fields." });
+    }
 
     const session = await Session.findOne({ sessionId });
     if (!session) return res.status(404).json({ error: "Session not found." });
@@ -213,7 +208,7 @@ const getLiveDeviceSensorData = async (req, res) => {
   }
 };
 
-module.exports = {
+const SessionController = {
   startSession,
   endSession, // Only export this, not stopSession
   getSessionByTransactionId,
@@ -221,4 +216,4 @@ module.exports = {
   getLiveDeviceSensorData,
   getActiveSession,
 };
-
+module.exports = SessionController;

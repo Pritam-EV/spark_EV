@@ -39,7 +39,7 @@ const SessionPage = () => {
 
     try {
       const res = await axios.get(
-        "https://spark-ev-backend.onrender.com/api/sessions/user-sessions",
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/user-sessions`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

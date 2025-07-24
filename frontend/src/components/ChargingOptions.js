@@ -16,7 +16,6 @@ import {
     Avatar,
 } from "@mui/material";
 
-
 function ChargingOptions() {
     const { device_id } = useParams();
     const [deviceDetails, setDeviceDetails] = useState(null);
@@ -26,7 +25,7 @@ function ChargingOptions() {
     const [estimatedEnergy, setEstimatedEnergy] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-const deviceId = device_id;
+    const deviceId = device_id;
 
 
     const navigate = useNavigate();
@@ -40,7 +39,7 @@ const deviceId = device_id;
         const fetchDeviceDetails = async () => {
             setIsLoading(true);
             try {
-                const response = await fetch(`https://spark-ev-backend.onrender.com/api/devices/${device_id}`);
+                const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/${device_id}`);
                 if (!response.ok) throw new Error("Failed to fetch device details.");
                 const data = await response.json();
                 setDeviceDetails(data);
@@ -54,12 +53,12 @@ const deviceId = device_id;
         fetchDeviceDetails();
     }, [device_id]);
 
-useEffect(() => {
-  if (selectedOption === "amount" && sliderValue > 0 && deviceDetails) {
-    setEstimatedEnergy(sliderValue / (deviceDetails.rate || 20));
-    setEstimatedCost(sliderValue);  // amount == cost
-  }
-}, [deviceDetails, selectedOption, sliderValue]);
+    useEffect(() => {
+    if (selectedOption === "amount" && sliderValue > 0 && deviceDetails) {
+        setEstimatedEnergy(sliderValue / (deviceDetails.rate || 20));
+        setEstimatedCost(sliderValue);  // amount == cost
+    }
+    }, [deviceDetails, selectedOption, sliderValue]);
 
 
 
@@ -160,17 +159,17 @@ useEffect(() => {
         }}>
             {/* Device Info Card */}
             <Card sx={{
-                mb: 3,
-                width: { xs: "90%", sm: "80%" },
-                background: "linear-gradient(to right, #1e2c3a, #243745)",
-                borderRadius: "16px",
-                padding: "14px",
-                color: "#e1f5f5",
-                boxShadow: "0 0 10px rgba(4, 191, 191, 0.2)",
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-            }}>
+                    mb: 3,
+                    width: { xs: "90%", sm: "80%" },
+                    background: "linear-gradient(to right, #1e2c3a, #243745)",
+                    borderRadius: "16px",
+                    padding: "14px",
+                    color: "#e1f5f5",
+                    boxShadow: "0 0 10px rgba(4, 191, 191, 0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                }}>
                 {/* Device Image */}
                 <Avatar
                     variant="rounded"
@@ -195,11 +194,9 @@ useEffect(() => {
                     <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>
                         Charger: {deviceDetails.charger_type}
                     </Typography>
-<Typography variant="caption" sx={{ color: "#7de0dd", display: "block" }}>
-  Rate: ₹{deviceDetails?.rate || 20}/kWh
-</Typography>
-
-
+                    <Typography variant="caption" sx={{ color: "#7de0dd", display: "block" }}>
+                    Rate: ₹{deviceDetails?.rate || 20}/kWh
+                    </Typography>
                 </Box>
             </Card>
 
@@ -223,11 +220,11 @@ useEffect(() => {
                             onClick={() => handleOptionSelect(option)}
                         >
                             <CardContent>
-<Typography variant="body2" sx={{ color: selectedOption === option ? "#0b0e13" : "#7de0dd" }}>
-  {option === "energy"
-    ? `Energy-Based `
-    : "Amount-Based"}
-</Typography>
+                                <Typography variant="body2" sx={{ color: selectedOption === option ? "#0b0e13" : "#7de0dd" }}>
+                                {option === "energy"
+                                    ? `Energy-Based `
+                                    : "Amount-Based"}
+                                </Typography>
 
                             </CardContent>
                         </Card>
@@ -238,12 +235,12 @@ useEffect(() => {
             {/* Slider Section */}
             {selectedOption && (
                 <Box mt={4} width={{ xs: "90%", sm: "80%" }} sx={{
-                    textAlign: "center",
-                    padding: "20px",
-                    borderRadius: "16px",
-                    background: "#121b22",
-                    boxShadow: "inset 0 0 10px rgba(4, 191, 191, 0.2)",
-                }}>
+                        textAlign: "center",
+                        padding: "20px",
+                        borderRadius: "16px",
+                        background: "#121b22",
+                        boxShadow: "inset 0 0 10px rgba(4, 191, 191, 0.2)",
+                    }}>
                     <Typography variant="body2" sx={{ color: "#e1f5f5", marginBottom: 2 }}>
                         {selectedOption === "energy"
                             ? "Select Energy (kWh)"
@@ -291,43 +288,41 @@ useEffect(() => {
 
             {/* Proceed to Payment */}
             <Box mt={4} textAlign="center" width="100%">
-<Button
-    variant="contained"
-    onClick={handleProceedToPayment}
-    disabled={
-        !selectedOption ||
-        sliderValue === 0 ||
-        deviceDetails.status === "occupied"
-    }
-    fullWidth={true}
-    sx={{
-        maxWidth: "300px",
-        mx: "auto",
-        padding: "12px 28px",
-        fontSize: "0.9rem",
-        borderRadius: "40px",
-        backgroundColor:
-            deviceDetails.status === "occupied" ? "#6c757d" : "#F2A007",
-        color: "#fff",
-        boxShadow:
-            deviceDetails.status === "occupied"
-                ? "none"
-                : "0 0 12px rgba(242, 160, 7, 0.6)",
-        "&:hover": {
-            backgroundColor:
-                deviceDetails.status === "occupied" ? "#6c757d" : "#f4af2d",
-        },
-    }}
->
-    {deviceDetails.status === "occupied"
-        ? "Device Occupied"
-        : "Proceed to Payment"}
-</Button>
+                <Button
+                    variant="contained"
+                    onClick={handleProceedToPayment}
+                    disabled={
+                        !selectedOption ||
+                        sliderValue === 0 ||
+                        deviceDetails.status === "occupied"
+                    }
+                    fullWidth={true}
+                    sx={{
+                        maxWidth: "300px",
+                        mx: "auto",
+                        padding: "12px 28px",
+                        fontSize: "0.9rem",
+                        borderRadius: "40px",
+                        backgroundColor:
+                            deviceDetails.status === "occupied" ? "#6c757d" : "#F2A007",
+                        color: "#fff",
+                        boxShadow:
+                            deviceDetails.status === "occupied"
+                                ? "none"
+                                : "0 0 12px rgba(242, 160, 7, 0.6)",
+                        "&:hover": {
+                            backgroundColor:
+                                deviceDetails.status === "occupied" ? "#6c757d" : "#f4af2d",
+                        },
+                    }}
+                >
+                    {deviceDetails.status === "occupied"
+                        ? "Device Occupied"
+                        : "Proceed to Payment"}
+                </Button>
 
             </Box>
-<FooterNav />
-
-
+            <FooterNav />
         </Box>
     );
 }

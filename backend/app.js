@@ -22,14 +22,15 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS: allow your frontend origins
-const CLIENT_URLS = [
+const client_URLs = [
   "http://localhost:3000",
-  "https://ornate-profiterole-873549.netlify.app",
+  "https://ornate-profiterole-873549.netlify.app"
 ];
+
+// CORS: allow your frontend origins
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || CLIENT_URLS.includes(origin)) {
+    if (origin && client_URLs.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
@@ -83,7 +84,7 @@ app.get("/api/getDevice", async (req, res) => {
 startMqttSubscriber();
 
 // ─── START SERVER ──────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
+  console.log(`🚀 Server running on port ${port}`);
 });

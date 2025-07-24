@@ -4,18 +4,15 @@ import mqtt from 'mqtt';
 import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
 
-
 const MQTT_BROKER_URL = 'wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.cloud:8884/mqtt';
 const MQTT_USER       = 'pritam';
 const MQTT_PASSWORD   = 'Pritam123';
-const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onrender.com';
-
 
 export default function SessionStartPage() {
   const { deviceId, transactionId } = useParams();
   const location  = useLocation();
   const navigate  = useNavigate();
-const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   // Stable IDs & refs
   const sessionIdRef    = useRef(uuidv4());
   const createdRef      = useRef(false);   // API start fired
@@ -79,7 +76,7 @@ const [imageLoaded, setImageLoaded] = useState(false);
 
     (async () => {
       try {
-        const resp = await fetch(`${API_BASE}/api/sessions/start`, {
+        const resp = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/start`, {
           method: 'POST',
           headers: {
             'Content-Type':  'application/json',

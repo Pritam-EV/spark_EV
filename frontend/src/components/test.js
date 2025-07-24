@@ -9,7 +9,6 @@ const MQTT_BROKER_URL = "wss://223f72957a1c4fa48a3ae815c57aab34.s1.eu.hivemq.clo
 const MQTT_USER = "pritam";
 const MQTT_PASSWORD = "Pritam123";
 
-
 function LiveSessionPage() {
     
   const navigate = useNavigate();
@@ -27,7 +26,7 @@ const mqttClient = useRef(null);
 
   useEffect(() => {
     // Fetch device details
-    fetch(`/api/devices/${deviceId}`)
+    fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/${deviceId}`)
       .then(res => res.json())
       .then(data => setDeviceInfo(data));
 

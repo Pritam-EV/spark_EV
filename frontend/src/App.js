@@ -36,28 +36,28 @@ const AppContent = () => {
 
   return (
     <div className="app-container">
-    <Routes>
-      {/* 🔥 FIXED: "Explore" now redirects to Home instead of Login */}
-      <Route path="/" element={<WelcomeScreen />} />
-      <Route path="/home" element={<Home />} />
+      <Routes>
+        {/* 🔥 FIXED: "Explore" now redirects to Home instead of Login */}
+        <Route path="/" element={<WelcomeScreen />} />
+        <Route path="/home" element={<Home />} />
 
-      {/* 🔒 Auth Routes */}
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/home" replace /> : <Login />} />
-      <Route path="/signup" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignUp />} />
+        {/* 🔒 Auth Routes */}
+        <Route path="/login" element={isAuthenticated ? <Navigate to="/home" replace /> : <Login />} />
+        <Route path="/signup" element={isAuthenticated ? <Navigate to="/home" replace /> : <SignUp />} />
 
-      {/* 🔒 Private Routes (Require Login) */}
-      <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
-      <Route path="/sessions" element={<PrivateRoute><SessionPage /></PrivateRoute>} />
-      <Route path="/qr-scanner" element={<PrivateRoute><QRScanner /></PrivateRoute>} />
-      <Route path="/charging-options/:device_id" element={<PrivateRoute><ChargingOptions /></PrivateRoute>} />
-      <Route path="/session-summary" element={<SessionSummary />} />
-      <Route path="/session-start/:transactionId" element={<PrivateRoute><SessionStart /></PrivateRoute>} />
-      <Route path="/live-session/:sessionId" element={<PrivateRoute><LiveSession /></PrivateRoute>} />
-      <Route path="/session-start/:deviceId/:transactionId" element={ <PrivateRoute> <SessionStart /> </PrivateRoute> } />
+        {/* 🔒 Private Routes (Require Login) */}
+        <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+        <Route path="/sessions" element={<PrivateRoute><SessionPage /></PrivateRoute>} />
+        <Route path="/qr-scanner" element={<PrivateRoute><QRScanner /></PrivateRoute>} />
+        <Route path="/charging-options/:device_id" element={<PrivateRoute><ChargingOptions /></PrivateRoute>} />
+        <Route path="/session-summary" element={<SessionSummary />} />
+        <Route path="/session-start/:transactionId" element={<PrivateRoute><SessionStart /></PrivateRoute>} />
+        <Route path="/live-session/:sessionId" element={<PrivateRoute><LiveSession /></PrivateRoute>} />
+        <Route path="/session-start/:deviceId/:transactionId" element={ <PrivateRoute> <SessionStart /> </PrivateRoute> } />
 
-      {/* Default Redirect */}
-      <Route path="*" element={<Navigate to="/home" />} />
-    </Routes>
+        {/* Default Redirect */}
+        <Route path="*" element={<Navigate to="/home" />} />
+      </Routes>
     </div>
   );
 };

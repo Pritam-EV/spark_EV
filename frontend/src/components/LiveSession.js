@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import FooterNav from "../components/FooterNav";
 
 export default function LiveSessionPage() {
   const navigate = useNavigate();
@@ -11,13 +11,10 @@ export default function LiveSessionPage() {
     deviceId,
     energySelected,
     amountPaid,
-    chargerId,
     transactionId,
     startDate,
     startTime,
   } = location.state || {};
-  
-  const API_BASE = process.env.REACT_APP_API_BASE || 'https://spark-ev-backend.onrender.com';
 
   // State variables
   const [relayState] = useState('OFF');
@@ -44,10 +41,50 @@ export default function LiveSessionPage() {
     relayRef.current = relayState;
   }, [relayState]);
 
+  const intervalRef = useRef(null); // To store the interval ID for clearing
+  const [data, setData] = useState(null); // To store the fetched data
+
+  const fetchActiveSession = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          console.warn("Failed to fetch active session:", result);
+          return;
+        }
+
+        setData(result);
+        setVoltage(result.voltage);
+        setCurrent(result.current);
+        setEnergyConsumed(result.energyConsumed);
+
+      } catch (error) {
+        console.error("Error fetching active session:", error);
+      }
+    };
+
+  useEffect(() => {
+    // Call backend every 5 seconds (5000ms)
+    intervalRef.current = setInterval(fetchActiveSession, 5000); 
+
+    // Clear the interval when the component unmounts
+    return () => {
+      clearInterval(intervalRef.current);
+    };
+  }, []); // Empty dependency array ensures this effect runs only once on mount and cleanup on unmount
+
   useEffect(() => {
     // Fetch device details from backend
     if (deviceId) {
-      fetch(`/api/devices/${deviceId}`)
+      fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/${deviceId}`)
         .then(res => res.json())
         .then(data => {
           console.log('Device info:', data);
@@ -59,53 +96,13 @@ export default function LiveSessionPage() {
   }, [deviceId]);
 
 
-
-  useEffect(() => {
-    let polling = true;
-  
-const fetchActiveSession = async () => {
-  try {
-    const token = localStorage.getItem("token");
-    const response = await fetch("https://spark-ev-backend.onrender.com/api/sessions/active", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.warn("Failed to fetch active session:", data);
-      return;
-    }
-
-    console.log("Fetched active session:", data);
-    fetchActiveSession(data);
-  } catch (error) {
-    console.error("Error fetching active session:", error);
-  }
-};
-
-    // Initial fetch and then poll every 3 seconds
-    fetchActiveSession();
-    const interval = setInterval(fetchActiveSession, 3000);
-    return () => { 
-      clearInterval(interval);
-      polling = false;
-    };
-  }, []);
-
-
   // Log the current relay state every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       console.log('Current relay state:', relayRef.current);
-    }, 5000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
-
 
 
   const handleStop = async () => {
@@ -113,42 +110,41 @@ const fetchActiveSession = async () => {
     // Notify backend to stop the session
     console.log('Stopping session, sending stop command...');
 
+    try {
+      // Send MQTT stop command
+      const stopCommand = {
+        command: 'stop',
+        sessionId,
+        deviceId,
+        endTrigger: 'manual',
+      };
 
-  try {
-    // Send MQTT stop command
-    const stopCommand = {
-      command: 'stop',
-      sessionId,
-      deviceId,
-      endTrigger: 'manual',
-    };
-
-
- console.log('MQTT stop command published:', stopCommand);
- const response = await fetch(`${API_BASE}/api/sessions/stop`, {
-   method: 'POST',
-   headers: {
-     'Content-Type': 'application/json',
-     Authorization: `Bearer ${localStorage.getItem('token')}`,
-   },
-   body: JSON.stringify({
-     sessionId, deviceId,
-     endTime: new Date().toISOString(),
-     endTrigger: 'manual',
-     // currentEnergy, deltaEnergy, amountUsed // include if backend needs
-   }),
- });
- if (!response.ok) {
-   const errorText = await response.text();
-   throw new Error(`Backend stop failed: ${errorText}`);
- }
- console.log('Session stopped successfully');
- navigate('/session-summary', { state: { sessionId } });
-  } catch (err) {
-    console.error('❌ Error stopping session:', err);
-    alert('Failed to stop session. Please try again.');
-  }
-};
+      console.log('MQTT stop command published:', stopCommand);
+      const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/stop`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          sessionId: data.sessionId, 
+          deviceId,
+          endTime: endTime,
+          endTrigger: 'manual',
+          // currentEnergy, deltaEnergy, amountUsed // include if backend needs
+        }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Backend stop failed: ${errorText}`);
+      }
+      console.log('Session stopped successfully');
+      navigate('/session-summary', { state: { sessionId } });
+    } catch (err) {
+      console.error('❌ Error stopping session:', err);
+      alert('Failed to stop session. Please try again.');
+    }
+  };
 
   return (
     <>
@@ -467,11 +463,11 @@ const fetchActiveSession = async () => {
             <div className="popup-box" onClick={e => e.stopPropagation()}>
               <div className="close-btn" onClick={() => setShowPopup(false)}>✕</div>
               <h3>Charging Session Info</h3>
-              <p><span>ChargerId:</span> {chargerId}</p>
-              <p><span>SessionId:</span> {sessionId}</p>
+              <p><span>ChargerId:</span> {deviceId}</p>
+              {/*<p><span>SessionId:</span> {data.sessionId}</p>*/}
               <p><span>TransactionId:</span> {transactionId}</p>
-              <p><span>Start Date:</span> {startDate}</p>
-              <p><span>Start Time:</span> {startTime}</p>
+              <p><span>Start Date:</span> {data.startDate}</p>
+              <p><span>Start Time:</span> {data.startTime}</p>
               <p><span>Amount Paid:</span> ₹{amountPaid}</p>
               <p><span>Energy Selected:</span> {energySelected} kWh</p>
             </div>
@@ -483,6 +479,7 @@ const fetchActiveSession = async () => {
           <button className="stop-charging" onClick={handleStop}>STOP CHARGING</button>
         </div>
       </div>
+      <FooterNav />
     </>
   );
 }

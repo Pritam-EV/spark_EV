@@ -45,7 +45,7 @@ useEffect(() => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("https://spark-ev-backend.onrender.com/api/auth/delete", {
+      const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/delete`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -69,7 +69,7 @@ const handleProfileUpdate = async (e) => {
   e.preventDefault();
   const token = localStorage.getItem("token");
 
-  const response = await fetch("https://spark-ev-backend.onrender.com/api/auth/updateProfile", {
+  const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/updateProfile`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",

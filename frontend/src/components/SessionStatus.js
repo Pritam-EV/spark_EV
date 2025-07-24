@@ -24,7 +24,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
         const token = localStorage.getItem("token");
         if (!token) throw new Error("No auth token");
         const res = await axios.get(
-          `${process.env.REACT_APP_API_URL}/api/sessions/active?deviceId=${deviceId}`,
+          `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active?deviceId=${deviceId}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (res.data?.sessionId) {
@@ -71,7 +71,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
       });
 
       const res = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/sessions/start`,
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/start`,
         {
           sessionId,
           userId,
@@ -131,7 +131,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
       const token = localStorage.getItem("token");
       const endTime = new Date().toISOString();
       await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/sessions/stop`,
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/stop`,
         { sessionId: session.sessionId, endTime, endTrigger: trigger },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -152,7 +152,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
     try {
       const token = localStorage.getItem("token");
       await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/sessions/update`,
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/update`,
         { sessionId: session.sessionId, energyConsumed, amountUsed },
         { headers: { Authorization: `Bearer ${token}` } }
       );

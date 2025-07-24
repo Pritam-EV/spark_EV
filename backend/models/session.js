@@ -12,7 +12,7 @@ const sessionSchema = new mongoose.Schema({
   sessionId:      { type: String,  required: true, unique: true },
   deviceId:       { type: String,  required: true },
   transactionId:  { type: String,  required: true, unique: true },
-  userId:         { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+  userId:         { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   startTime:      { type: Date,    required: true },
   startDate:      { type: String,  required: true },
   startEnergy:    { type: Number,  default: null },     // kWh at start
@@ -29,4 +29,5 @@ const sessionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model("Session", sessionSchema);
+const Session = mongoose.model("Session", sessionSchema);
+module.exports = Session;

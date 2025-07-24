@@ -2,8 +2,6 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const mongoose = require("mongoose");
-const sessionController = require('../controllers/sessionController');
-
 
 const {
   startSession,
@@ -18,11 +16,7 @@ const Session = require("../models/session");
 const Device = require("../models/device");
 
 // 1. Fetch session by transaction ID (for SessionStart page)
-router.get(
-  "/by-transaction/:transactionId",
-  authMiddleware,
-  getSessionByTransactionId
-);
+router.get("/by-transaction/:transactionId", authMiddleware, getSessionByTransactionId);
 
 // 8. User’s sessions list
 router.get("/user-sessions", authMiddleware, async (req, res) => {
@@ -42,17 +36,9 @@ router.get("/user-sessions", authMiddleware, async (req, res) => {
   }
 });
 
-// 2. Fetch session by session ID (for LiveSession page)
-router.get(
-  "/:sessionId",
-  authMiddleware,
-  getSessionById
-);
-
 // 3. Active session lookup (unchanged)
 // Add this route for getting the active session of the authenticated user
 router.get('/active', authMiddleware, getActiveSession);
-module.exports = router;
 
 // 4. Start session (Triggered after payment success)
 router.post("/start", authMiddleware, startSession);
@@ -103,13 +89,10 @@ router.post("/update", async (req, res) => {
   res.json({ message: "Updated" });
 });
 
-
-
 // 9. Optional: fetch live sensor data for a device
-router.get(
-  "/device/:deviceId/sensor",
-  authMiddleware,
-  getLiveDeviceSensorData
-);
+router.get("/device/:deviceId/sensor", authMiddleware, getLiveDeviceSensorData);
+
+// 2. Fetch session by session ID (for LiveSession page)
+router.get("/:sessionId", authMiddleware, getSessionById);
 
 module.exports = router;
