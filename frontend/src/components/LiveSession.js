@@ -6,15 +6,26 @@ export default function LiveSessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   // Extract session data from location.state
+  class LocationState {
+    sessionId = "";
+    deviceId = "";
+    energySelected = 0;
+    amountPaid = "";
+    transactionId = "";
+    startDate = "";
+    startTime = "";
+  } 
+  const locationState = location.state || new LocationState();
   const {
-    sessionId,
+    sessionId, 
     deviceId,
     energySelected,
     amountPaid,
     transactionId,
     startDate,
     startTime,
-  } = location.state || {};
+  } = locationState;
+  console.log("Live Session LocationState data", location.state);
 
   // State variables
   const [relayState] = useState('OFF');
@@ -42,7 +53,7 @@ export default function LiveSessionPage() {
   }, [relayState]);
 
   const intervalRef = useRef(null); // To store the interval ID for clearing
-  const [data, setData] = useState(null); // To store the fetched data
+  const [sessionData, setSessionData] = useState(null); // To store the fetched data
 
   const fetchActiveSession = async () => {
       try {
@@ -60,8 +71,8 @@ export default function LiveSessionPage() {
           console.warn("Failed to fetch active session:", result);
           return;
         }
-
-        setData(result);
+        console.log("Active session fetched", result);
+        setSessionData(result);
         setVoltage(result.voltage);
         setCurrent(result.current);
         setEnergyConsumed(result.energyConsumed);
@@ -111,6 +122,10 @@ export default function LiveSessionPage() {
     console.log('Stopping session, sending stop command...');
 
     try {
+      if (!sessionData)
+      {
+        throw new Error("No session data");
+      }
       // Send MQTT stop command
       const stopCommand = {
         command: 'stop',
@@ -127,7 +142,7 @@ export default function LiveSessionPage() {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
-          sessionId: data.sessionId, 
+          sessionId: sessionData?.sessionId, 
           deviceId,
           endTime: endTime,
           endTrigger: 'manual',
@@ -138,8 +153,9 @@ export default function LiveSessionPage() {
         const errorText = await response.text();
         throw new Error(`Backend stop failed: ${errorText}`);
       }
-      console.log('Session stopped successfully');
-      navigate('/session-summary', { state: { sessionId } });
+          console.log("Navigating to summary with sessionId:", sessionId);
+          navigate('/session-summary', { state: { sessionId } });
+
     } catch (err) {
       console.error('❌ Error stopping session:', err);
       alert('Failed to stop session. Please try again.');
@@ -466,8 +482,8 @@ export default function LiveSessionPage() {
               <p><span>ChargerId:</span> {deviceId}</p>
               {/*<p><span>SessionId:</span> {data.sessionId}</p>*/}
               <p><span>TransactionId:</span> {transactionId}</p>
-              <p><span>Start Date:</span> {data.startDate}</p>
-              <p><span>Start Time:</span> {data.startTime}</p>
+              <p><span>Start Date:</span> {sessionData?.startDate}</p>
+              <p><span>Start Time:</span> {sessionData?.startTime}</p>
               <p><span>Amount Paid:</span> ₹{amountPaid}</p>
               <p><span>Energy Selected:</span> {energySelected} kWh</p>
             </div>

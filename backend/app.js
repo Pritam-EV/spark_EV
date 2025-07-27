@@ -22,15 +22,12 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const client_URLs = [
-  "http://localhost:3000",
-  "https://ornate-profiterole-873549.netlify.app"
-];
+const client_URLs = process.env.CLIENT_URL;
 
 // CORS: allow your frontend origins
 app.use(cors({
   origin: (origin, callback) => {
-    if (origin && client_URLs.includes(origin)) {
+    if (origin && client_URLs==origin) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
